@@ -23,4 +23,4 @@ clean:
 	rm -rf $(OUTPUT_DIR)
 
 
-.PHONY: all build compress clean
+.PHONY: all build clean
