@@ -1,0 +1,30 @@
+# Base .gitignore https://github.com/github/gitignore/blob/main/Go.gitignore
+
+.idea
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Do not publish any env config files
+**/.env
+
+# do not publish anything that we compile from our side
+builds/**
+shared/pkg/version/.commit_id
+
+# We would kindly want to not send anything on these folders, as it would mean sending local data that we do not want to have on the repo
+deployment/**/data.d/*
+deployment/**/conf.d/*
