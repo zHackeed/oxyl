@@ -24,6 +24,7 @@ profile.cov
 # do not publish anything that we compile from our side
 builds/**
 shared/pkg/version/.commit_id
+shared/pkg/version/.branch_id
 
 # We would kindly want to not send anything on these folders, as it would mean sending local data that we do not want to have on the repo
 deployment/**/data.d/*
