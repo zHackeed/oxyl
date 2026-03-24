@@ -10,7 +10,7 @@ all: build
 
 # we should always generate the corresponding generated values for the code. (Consistency)
 generate:
-	$(go generate ./shared/pkg/version/version.go)
+	go generate ./shared/pkg/version/version.go
 
 build: clean generate
 	@mkdir -p $(OUTPUT_DIR)
