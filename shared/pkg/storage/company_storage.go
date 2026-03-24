@@ -47,15 +47,15 @@ func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Comp
 		return fmt.Errorf("unable to add holder as member: %w", err)
 	}
 
+	sql = `INSERT INTO company_notification_thresholds (holder, notification_type, value) VALUES ($1, $2, $3)`
 	for notificationType, threshold := range company.NotificationThresholds {
-		sql := `INSERT INTO company_notification_thresholds (holder, notification_type, value) VALUES ($1, $2, $3)`
 		if _, err := tx.Exec(ctx, sql, company.ID, notificationType, threshold); err != nil {
 			return fmt.Errorf("unable to create company notification thresholds: %w", err)
 		}
 	}
 
+	sql = `INSERT INTO company_notification_settings (holder, webhook_type, endpoint, metakeys) VALUES ($1, $2, $3, $4)`
 	for _, endpoint := range company.NotificationEndpoints {
-		sql := `INSERT INTO company_notification_settings (holder, webhook_type, endpoint, metakeys) VALUES ($1, $2, $3, $4)`
 		if _, err := tx.Exec(ctx, sql, company.ID, endpoint.WebhookType, endpoint.EndpointUrl, endpoint.MetaKeys); err != nil {
 			return fmt.Errorf("unable to create company notification settings: %w", err)
 		}

@@ -34,3 +34,19 @@ func NotificationTypes() []NotificationType {
 		NotificationTypeAgentNetworkUsageThreshold,
 	}
 }
+
+const (
+	AgentStatusActive      AgentStatus = "ACTIVE"
+	AgentStatusEnrolling   AgentStatus = "ENROLLING"
+	AgentStatusMaintenance AgentStatus = "MAINTENANCE"
+	AgentStatusInactive    AgentStatus = "INACTIVE"
+)
+
+type AgentStatus string
+
+const (
+	TokenTypeAgent JWTTokenType = "AGENT"
+	TokenTypeUser  JWTTokenType = "USER"
+)
+
+type JWTTokenType string

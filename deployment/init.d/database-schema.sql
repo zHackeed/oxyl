@@ -28,6 +28,7 @@ END IF;
         CREATE TYPE agent_status AS ENUM (
             'ACTIVE',
             'ENROLLING',
+            'MAINTENANCE',
             'INACTIVE'
         );
 END IF;
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS agents(
     total_disk bigint,
 
     last_handshake timestamp, /* This is the last time the agent has requested a JWT update and a heartbeat. */
+    last_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (holder) REFERENCES companies(id)
@@ -128,6 +130,7 @@ CREATE TABLE IF NOT EXISTS agent_partition_scheme(
     raid_level int,
 
     FOREIGN KEY (agent) REFERENCES agents(id)
+    UNIQUE (agent, mount_point) -- An agent can have multiple partitions, but the agent <-> mount point is unique for each agent
 );
 
 CREATE TABLE IF NOT EXISTS agent_general_metrics(

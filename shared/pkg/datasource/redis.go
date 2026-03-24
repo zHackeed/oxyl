@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -90,6 +91,36 @@ func (rc *RedisConnection) Exists(ctx context.Context, key variables.RedisKey) (
 
 func (rc *RedisConnection) Del(ctx context.Context, key variables.RedisKey) error {
 	return rc.conn.Del(ctx, string(key)).Err()
+}
+
+func (rc *RedisConnection) HashSetIfNotExists(ctx context.Context, key variables.RedisKey, field string, value any, expiration time.Duration) error {
+	return rc.conn.HSetNX(ctx, string(key), field, value).Err()
+}
+
+func (rc *RedisConnection) HashExists(ctx context.Context, key variables.RedisKey, field string) (bool, error) {
+	return rc.conn.HExists(ctx, string(key), field).Result()
+}
+
+func (rc *RedisConnection) HashGet(ctx context.Context, key variables.RedisKey, field string) (string, error) {
+	return rc.conn.HGet(ctx, string(key), field).Result()
+}
+
+func (rc *RedisConnection) Publish(ctx context.Context, channel variables.RedisChannel, message any) error {
+	data, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("unable to publish to redis channel %q: %w", channel, err)
+	}
+
+	return rc.conn.Publish(ctx, string(channel), data).Err()
+}
+
+func (rc *RedisConnection) Subscribe(ctx context.Context, channel ...variables.RedisChannel) *redis.PubSub {
+	parsedChannels := make([]string, len(channel))
+	for i, c := range channel {
+		parsedChannels[i] = string(c)
+	}
+
+	return rc.conn.Subscribe(ctx, parsedChannels...)
 }
 
 func (rc *RedisConnection) Close() error {
