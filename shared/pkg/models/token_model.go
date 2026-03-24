@@ -46,6 +46,7 @@ func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token
 
 type RefreshToken struct {
 	Identifier    string
+	Holder        *string
 	AccessTokenId string
 
 	Type JWTTokenType
@@ -53,7 +54,7 @@ type RefreshToken struct {
 	jwt.RegisteredClaims
 }
 
-func NewRefreshToken(identifier, accessTokenId string, tokenType JWTTokenType) (*RefreshToken, error) {
+func NewRefreshToken(identifier string, holder *string, accessTokenId string, tokenType JWTTokenType) (*RefreshToken, error) {
 	if identifier == "" {
 		return nil, errors.New("identifier is empty")
 	}
@@ -65,8 +66,13 @@ func NewRefreshToken(identifier, accessTokenId string, tokenType JWTTokenType) (
 		return nil, errors.New("token type is not valid")
 	}
 
+	if tokenType == TokenTypeAgent && (holder == nil || *holder == "") {
+		return nil, errors.New("holder is nil")
+	}
+
 	return &RefreshToken{
 		Identifier:    identifier,
+		Holder:        holder,
 		AccessTokenId: accessTokenId,
 		Type:          tokenType,
 

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"zhacked.me/oxyl/shared/pkg/datasource"
-	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/variables"
 )
 
@@ -19,10 +18,10 @@ func NewTokenStorage(persistence *datasource.RedisConnection) *TokenStorage {
 	}
 }
 
-func (t *TokenStorage) RevokeToken(ctx context.Context, token *models.Token) error {
-	return t.conn.HashSetIfNotExists(ctx, variables.RedisTokenRevokedRedisKey, token.Identifier, "1", 24*time.Hour)
+func (t *TokenStorage) RevokeToken(ctx context.Context, tokenId string) error {
+	return t.conn.HashSetIfNotExists(ctx, variables.RedisTokenRevokedRedisKey, tokenId, "1", 24*time.Hour)
 }
 
-func (t *TokenStorage) IsTokenRevoked(ctx context.Context, token *models.Token) (bool, error) {
-	return t.conn.HashExists(ctx, variables.RedisTokenRevokedRedisKey, token.Identifier)
+func (t *TokenStorage) IsTokenRevoked(ctx context.Context, tokenId string) (bool, error) {
+	return t.conn.HashExists(ctx, variables.RedisTokenRevokedRedisKey, tokenId)
 }

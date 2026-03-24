@@ -13,6 +13,12 @@ import (
 	"zhacked.me/oxyl/shared/pkg/storage"
 )
 
+const (
+	tokenIssuer string = "oxyl"
+)
+
+var allowedAudiences = []string{"https://api.oxyl.zhacked.me", "https://nexus.oxyl.zhacked.me"}
+
 type TokenService struct {
 	parser *jwt.Parser
 
@@ -48,7 +54,8 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 	return &TokenService{
 		parser: jwt.NewParser(
 			jwt.WithValidMethods([]string{signingMethod.Alg()}),
-			jwt.WithIssuer("oxyl"),
+			jwt.WithIssuer(tokenIssuer),
+			jwt.WithAudience(allowedAudiences...), //hardcoded, would never change
 			jwt.WithIssuedAt(),
 			jwt.WithExpirationRequired(),
 			jwt.WithLeeway(15*time.Second),
@@ -65,17 +72,17 @@ func (t *TokenService) CreateToken(identifier string, holder *string, tokenType 
 		return nil, fmt.Errorf("unable to create access token: %w", err)
 	}
 
-	refreshToken, err := models.NewRefreshToken(accessToken.Identifier, accessToken.ID, tokenType)
+	refreshToken, err := models.NewRefreshToken(accessToken.Identifier, accessToken.Holder, accessToken.ID, tokenType)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create refresh token: %w", err)
 	}
 
-	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, accessToken.RegisteredClaims).SignedString(t.privateKey)
+	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, accessToken).SignedString(t.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign access token: %w", err)
 	}
 
-	refreshTokenString, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, refreshToken.RegisteredClaims).SignedString(t.privateKey)
+	refreshTokenString, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, refreshToken).SignedString(t.privateKey)
 	if err != nil {
 		return nil, fmt.Errorf("unable to sign refresh token: %w", err)
 	}
@@ -107,16 +114,19 @@ func (t *TokenService) ParseToken(token string) (*models.Token, error) {
 		return nil, fmt.Errorf("unable to parse token: %w", err)
 	}
 
+	if !tokenParsed.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
 	claims, ok := tokenParsed.Claims.(*models.Token)
 	if !ok {
 		return nil, fmt.Errorf("unable to parse token: %w", err)
 	}
 
 	return claims, nil
-
 }
 
-func (t *TokenService) ParseRefreshToken(token string) (*models.RefreshToken, error) {
+func (t *TokenService) ParseRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error) {
 	tokenParsed, err := t.parser.ParseWithClaims(token, &models.RefreshToken{}, func(token *jwt.Token) (any, error) {
 		return t.publicKey, nil
 	})
@@ -125,18 +135,45 @@ func (t *TokenService) ParseRefreshToken(token string) (*models.RefreshToken, er
 		return nil, fmt.Errorf("unable to parse refresh token: %w", err)
 	}
 
+	if !tokenParsed.Valid {
+		return nil, fmt.Errorf("invalid refresh token")
+	}
+
 	claims, ok := tokenParsed.Claims.(*models.RefreshToken)
 	if !ok {
 		return nil, fmt.Errorf("unable to parse refresh token: %w", err)
 	}
 
+	invalidated, err := t.storage.IsTokenRevoked(ctx, claims.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to check if refresh token is revoked: %w", err)
+	}
+
+	if invalidated {
+		return nil, fmt.Errorf("refresh token is revoked")
+	}
+
 	return claims, nil
 }
 
-func (t *TokenService) RefreshToken(refreshToken string) (string, error) {
-	return "", nil
+func (t *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*models.TokenPair, error) {
+	if refreshToken == "" {
+		return nil, fmt.Errorf("refresh token is empty")
+	}
+
+	claims, err := t.ParseRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse refresh token: %w", err)
+	}
+
+	err = t.storage.RevokeToken(ctx, claims.ID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to revoke refresh token: %w", err)
+	}
+
+	return t.CreateToken(claims.Identifier, claims.Holder, claims.Type)
 }
 
-func (t *TokenService) RevokeToken(ctx context.Context, refreshToken string) error {
-	return nil
+func (t *TokenService) RevokeToken(ctx context.Context, tokenId string) error {
+	return t.storage.RevokeToken(ctx, tokenId)
 }
