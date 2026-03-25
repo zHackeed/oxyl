@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var ()
 
 type User struct {
 	ID       string `json:"id"`
@@ -24,7 +27,7 @@ type User struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-func NewUser(name, surname, email, hashedPassword string) (*User, error) {
+func NewUser(name, surname, email, password string) (*User, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
@@ -42,10 +45,15 @@ func NewUser(name, surname, email, hashedPassword string) (*User, error) {
 		return nil, fmt.Errorf("invalid email address: %w", err)
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("unable to hash password: %w", err)
+	}
+
 	return &User{
 		ID:        ulid.Make().String(),
 		Email:     email,
-		Password:  hashedPassword,
+		Password:  string(hashedPassword),
 		Name:      name,
 		Surname:   surname,
 		Enabled:   true,

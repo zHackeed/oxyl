@@ -50,3 +50,10 @@ const (
 )
 
 type JWTTokenType string
+
+const (
+	ContextKeyUser ContextKey = "oxyl_user_identifier"
+	ContextAgent   ContextKey = "oxyl_agent_identifier"
+)
+
+type ContextKey string

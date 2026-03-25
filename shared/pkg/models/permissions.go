@@ -1,6 +1,12 @@
-package storage
+package models
+
+import "errors"
 
 // todo: Rethink this, might want to have a more fine grained permission system.
+
+var (
+	ErrPermissionDenied = errors.New("user does not have the required permissions to perform this action")
+)
 
 const (
 	CompanyPermissionView             CompanyPermission = 1  // see company + agents, implicit for all members - 00000001

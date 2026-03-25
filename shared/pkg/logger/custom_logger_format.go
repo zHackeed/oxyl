@@ -12,6 +12,8 @@ import (
 	"github.com/fatih/color"
 )
 
+// Todo: reshape to be able to send context data before messages
+
 var (
 	InfoColor  = color.New(color.Bold, color.FgCyan)
 	WarnColor  = color.New(color.Bold, color.FgYellow)

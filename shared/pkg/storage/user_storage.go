@@ -61,6 +61,21 @@ func (u *UserStorage) GetUser(ctx context.Context, email string) (*models.User, 
 	return &user, nil
 }
 
+func (u *UserStorage) GetUserById(ctx context.Context, userId string) (*models.User, error) {
+	sql := `SELECT id, email, password, name, surname, enabled, last_login, created_at FROM users WHERE id = $1`
+	row := u.conn.Pool().QueryRow(ctx, sql, userId)
+	var user models.User
+	if err := row.Scan(&user.ID, &user.Email, &user.Password, &user.Name, &user.Surname, &user.Enabled, &user.LastLogin, &user.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, fmt.Errorf("unable to get user: %w", err)
+	}
+
+	return &user, nil
+}
+
 func (u *UserStorage) GetUserWithMemberships(ctx context.Context, email string) (*models.User, error) {
 	user, err := u.GetUser(ctx, email)
 	if err != nil {
@@ -85,7 +100,7 @@ func (u *UserStorage) GetUserWithMemberships(ctx context.Context, email string) 
 			return nil, fmt.Errorf("unable to get user: %w", err)
 		}
 		memberOf[companyID] = &models.CompanyMember{
-			Permission: permission,
+			Permission: models.CompanyPermission(permission),
 		}
 	}
 

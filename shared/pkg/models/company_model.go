@@ -9,17 +9,14 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// CompanyPermission is the permission that a user has within a company
-type CompanyPermission int
-
 type CompanyNotificationSettings struct {
 	WebhookType string          `json:"webhook_type"`
 	EndpointUrl string          `json:"endpoint"`
 	MetaKeys    json.RawMessage `json:"metakeys"`
 }
 type CompanyMember struct {
-	UserID     string `json:"user_id"`
-	Permission int    `json:"permission"`
+	UserID     string            `json:"user_id"`
+	Permission CompanyPermission `json:"permission"`
 }
 
 type Company struct {
@@ -83,7 +80,7 @@ func (c *Company) AddMember(userID string, permission int) {
 
 	c.Members[userID] = &CompanyMember{
 		UserID:     userID,
-		Permission: permission,
+		Permission: CompanyPermission(permission),
 	}
 }
 

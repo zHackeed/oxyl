@@ -14,6 +14,7 @@ import (
 var (
 	ErrCompanyNotFound     = errors.New("company not found")
 	ErrMemberAlreadyExists = errors.New("member already exists")
+	ErrMemberNotFound      = errors.New("member not found")
 )
 
 type CompanyStorage struct {
@@ -163,6 +164,25 @@ func (c *CompanyStorage) GetCompaniesOfUser(ctx context.Context, userID string) 
 	}
 
 	return companies, nil
+}
+
+func (c *CompanyStorage) GetCompanyMembership(ctx context.Context, userID, companyID string) (*models.CompanyMember, error) {
+	sql := `SELECT permission_bitwise FROM company_members WHERE user_id = $1 AND company_id = $2`
+	row := c.conn.Pool().QueryRow(ctx, sql, userID, companyID)
+
+	var permission int
+	if err := row.Scan(&permission); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrMemberNotFound
+		}
+
+		return nil, fmt.Errorf("unable to get company membership: %w", err)
+	}
+
+	return &models.CompanyMember{
+		UserID:     userID,
+		Permission: models.CompanyPermission(permission),
+	}, nil
 }
 
 func (c *CompanyStorage) GetNotificationEndpointsOfCompany(ctx context.Context, companyID string) ([]*models.CompanyNotificationSettings, error) {
