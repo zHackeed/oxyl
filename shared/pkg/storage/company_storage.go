@@ -43,7 +43,7 @@ func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Comp
 
 	sql = `INSERT INTO company_members (user_id, company_id, permission_bitwise) VALUES ($1, $2, $3)`
 
-	//TODO: Define permission logic handler
+	//TODO: Define permission logic adapt
 	if _, err := tx.Exec(ctx, sql, company.Holder, company.ID, models.CompanyPermission(999)); err != nil {
 		return fmt.Errorf("unable to add holder as member: %w", err)
 	}
@@ -226,6 +226,10 @@ func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, companyID, user
 func (c *CompanyStorage) RemoveMemberFromCompany(ctx context.Context, companyID, userID string) error {
 	sql := `DELETE FROM company_members WHERE user_id = $1 AND company_id = $2`
 	if _, err := c.conn.Pool().Exec(ctx, sql, userID, companyID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrMemberNotFound
+		}
+
 		return fmt.Errorf("unable to remove member from company: %w", err)
 	}
 
@@ -252,6 +256,29 @@ func (c *CompanyStorage) RemoveNotificationEndpointFromCompany(ctx context.Conte
 	return nil
 }
 
+func (c *CompanyStorage) GetNotificationThresholdsOfCompany(ctx context.Context, companyID string) (map[models.NotificationType]int, error) {
+	sql := `SELECT notification_type, value FROM company_notification_thresholds WHERE holder = $1`
+	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get company notification thresholds: %w", err)
+	}
+
+	thresholds := make(map[models.NotificationType]int)
+	for rows.Next() {
+		var notificationType models.NotificationType
+		var value int
+		if err := rows.Scan(&notificationType, &value); err != nil {
+			return nil, fmt.Errorf("unable to get company notification thresholds: %w", err)
+		}
+		thresholds[notificationType] = value
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("unable to get company notification thresholds: %w", rows.Err())
+	}
+
+	return thresholds, nil
+}
 func (c *CompanyStorage) SetNotificationThresholdForCompany(ctx context.Context, companyID string, notificationType models.NotificationType, threshold int) error {
 	sql := `INSERT INTO company_notification_thresholds (holder, notification_type, value) VALUES ($1, $2, $3) ON CONFLICT (holder, notification_type) DO UPDATE SET value = $3`
 	if _, err := c.conn.Pool().Exec(ctx, sql, companyID, notificationType, threshold); err != nil {

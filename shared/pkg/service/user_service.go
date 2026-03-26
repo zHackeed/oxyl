@@ -25,6 +25,23 @@ func NewUserService(userStorage *storage.UserStorage) *UserService {
 	}
 }
 
+func (u *UserService) Authenticate(ctx context.Context, email, password string) (*models.User, error) {
+	user, err := u.userStorage.GetUser(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("unable to find user: %w", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+
+	if err := u.userStorage.UpdateLastLogin(ctx, user.ID); err != nil {
+		return nil, fmt.Errorf("unable to update last login: %w", err)
+	}
+
+	return user, nil
+}
+
 func (u *UserService) Register(ctx context.Context, name, surname, email, password string) (*models.User, error) {
 	user, err := models.NewUser(name, surname, email, password)
 	if err != nil {

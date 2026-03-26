@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"zhacked.me/oxyl/shared/pkg/datasource"
+	redisModels "zhacked.me/oxyl/shared/pkg/messenger/models"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/storage"
 	"zhacked.me/oxyl/shared/pkg/utils"
+	"zhacked.me/oxyl/shared/pkg/variables"
 )
 
 type AgentService struct {
@@ -30,10 +33,10 @@ func NewAgentService(
 	}
 }
 
-func (a *AgentService) CreateAgent(ctx context.Context, displayNam, registeredIP, holder string) (*models.Agent, error) {
+func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredIP, holder string) (*models.Agent, error) {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
-		return nil, errors.New("user not found in context")
+		return nil, models.ErrPermissionDenied
 	}
 
 	membership, err := a.companyStorage.GetCompanyMembership(ctx, userId, holder)
@@ -46,7 +49,7 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayNam, registeredIP
 		return nil, models.ErrPermissionDenied
 	}
 
-	model, err := models.NewAgent(displayNam, registeredIP, holder)
+	model, err := models.NewAgent(displayName, registeredIP, holder)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create agent: %w", err)
 	}
@@ -57,13 +60,24 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayNam, registeredIP
 		return nil, fmt.Errorf("unable to save agent to storage: %w", err)
 	}
 
+	// notify the users watching the interface and resort the gui on their end.
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentCreation{
+		CompanyId:    holder,
+		AgentId:      model.ID,
+		State:        models.AgentStatusEnrolling,
+		RegisteredIP: registeredIP,
+		DisplayName:  displayName,
+	}); err != nil {
+		slog.Error("unable to publish agent creation event", "error", err)
+	}
+
 	return model, nil
 }
 
 func (a *AgentService) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
-		return nil, errors.New("user not found in context")
+		return nil, models.ErrPermissionDenied
 	}
 
 	if agentID == "" {
@@ -136,6 +150,14 @@ func (a *AgentService) UpdateAgentStatus(ctx context.Context, agentID string, st
 		return fmt.Errorf("unable to update agent status: %w", err)
 	}
 
+	// notify agent of status update
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentUpdate{
+		AgentId: agentID,
+		Status:  status,
+	}); err != nil {
+		slog.Error("unable to publish agent update event", "error", err)
+	}
+
 	return nil
 }
 
@@ -163,6 +185,14 @@ func (a *AgentService) DeleteAgent(ctx context.Context, agentID string) error {
 
 	if err := a.agentStorage.DeleteAgent(ctx, agentID); err != nil {
 		return fmt.Errorf("unable to delete agent: %w", err)
+	}
+
+	// We need to disconnect the agent (kill it) from the gRPC and also tell the websockets to stop reading data and redirect them back to the agent list
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentDeletion, redisModels.AgentDelete{
+		CompanyId: agent.Holder,
+		AgentId:   agentID,
+	}); err != nil {
+		slog.Error("unable to publish agent deletion event", "error", err)
 	}
 
 	return nil

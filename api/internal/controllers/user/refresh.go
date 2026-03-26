@@ -1,0 +1,55 @@
+package user
+
+import (
+	"strings"
+
+	"github.com/gofiber/fiber/v3"
+	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/shared/pkg/service"
+)
+
+var _ apiModel.Registrable = (*RefreshController)(nil)
+
+type RefreshController struct {
+	tokenService *service.TokenService
+}
+
+func (r *RefreshController) GetMethod() apiModel.HttpMethod {
+	return apiModel.MethodPost
+}
+
+func (r *RefreshController) GetPath() string {
+	return "/auth/refresh"
+}
+
+func (r *RefreshController) GetRequestModel() interface{} {
+	// We don't need body for the refresh token endpoint.
+	return nil
+}
+
+func NewRefreshController(tokenService *service.TokenService) *RefreshController {
+	return &RefreshController{
+		tokenService: tokenService,
+	}
+}
+
+func (r *RefreshController) Handle(ctx fiber.Ctx) error {
+	token := ctx.Get("Authorization")
+	if token == "" {
+		return fiber.ErrUnauthorized
+	}
+
+	// authorization: Bearer XXX....
+	if !strings.HasPrefix(token, "Bearer ") {
+		return fiber.ErrUnauthorized
+	}
+
+	token = token[len("Bearer "):] // Strip "Bearer "
+
+	tokenPair, err := r.tokenService.RefreshToken(ctx.Context(), token)
+	if err != nil {
+		return fiber.ErrUnauthorized
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(tokenPair)
+}

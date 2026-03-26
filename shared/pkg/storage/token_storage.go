@@ -19,7 +19,7 @@ func NewTokenStorage(persistence *datasource.RedisConnection) *TokenStorage {
 }
 
 func (t *TokenStorage) RevokeToken(ctx context.Context, tokenId string) error {
-	return t.conn.HashSetIfNotExists(ctx, variables.RedisTokenRevokedRedisKey, tokenId, "1", 24*time.Hour)
+	return t.conn.HashSetIfNotExists(ctx, variables.RedisTokenRevokedRedisKey, tokenId, "revoked", 24*time.Hour)
 }
 
 func (t *TokenStorage) IsTokenRevoked(ctx context.Context, tokenId string) (bool, error) {

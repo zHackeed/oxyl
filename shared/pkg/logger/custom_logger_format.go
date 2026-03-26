@@ -15,7 +15,7 @@ import (
 // Todo: reshape to be able to send context data before messages
 
 var (
-	InfoColor  = color.New(color.Bold, color.FgCyan)
+	InfoColor  = color.New(color.Bold, color.FgGreen)
 	WarnColor  = color.New(color.Bold, color.FgYellow)
 	ErrorColor = color.New(color.Bold, color.FgRed)
 	DebugColor = color.New(color.Bold, color.FgBlue)

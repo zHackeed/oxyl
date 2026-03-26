@@ -55,7 +55,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 		parser: jwt.NewParser(
 			jwt.WithValidMethods([]string{signingMethod.Alg()}),
 			jwt.WithIssuer(tokenIssuer),
-			jwt.WithAudience(allowedAudiences...), //hardcoded, would never change
+			jwt.WithAudience(allowedAudiences...), //hardcoded, would never change honestly
 			jwt.WithIssuedAt(),
 			jwt.WithExpirationRequired(),
 			jwt.WithLeeway(15*time.Second),
