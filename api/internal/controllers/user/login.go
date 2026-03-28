@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/models"
@@ -27,8 +26,8 @@ func (l *LoginController) GetMethod() apiModel.HttpMethod {
 	return apiModel.MethodPost
 }
 
-func (l *LoginController) GetRequestModel() interface{} {
-	return requests.LoginRequest{}
+func (l *LoginController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.LoginRequest{})
 }
 
 func (l *LoginController) GetPath() string {
@@ -36,12 +35,12 @@ func (l *LoginController) GetPath() string {
 }
 
 func (l *LoginController) Handle(ctx fiber.Ctx) error {
-	request, ok := ctx.Locals(bind.JSON).(*requests.LoginRequest)
+	request, ok := ctx.Locals(l.RequestRequirements().GetValidationType()).(*requests.LoginRequest)
 	if !ok {
 		return fiber.ErrInternalServerError
 	}
 
-	found, err := l.userService.Authenticate(ctx.Context(), request.Email, request.Password)
+	found, err := l.userService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
 		return fiber.ErrUnauthorized
 	}

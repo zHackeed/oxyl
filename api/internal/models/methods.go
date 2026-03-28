@@ -1,6 +1,6 @@
 package models
 
-// So golang's "net/http" does not have a type for the method, so I have to create my own for consistency.
+// So golang "net/http" does not have a type for the method, so I have to create my own for consistency.
 
 const (
 	MethodGet     HttpMethod = "GET"

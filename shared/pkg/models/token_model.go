@@ -37,6 +37,7 @@ func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token
 		Type:       tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        ulid.Make().String(),
+			Audience:  []string{"https://api.oxyl.zhacked.me", "https://nexus.oxyl.zhacked.me"},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "oxyl",
@@ -78,6 +79,7 @@ func NewRefreshToken(identifier string, holder *string, accessTokenId string, to
 
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        ulid.Make().String(),
+			Audience:  []string{"https://api.oxyl.zhacked.me", "https://nexus.oxyl.zhacked.me"},
 			ExpiresAt: jwt.NewNumericDate(time.Now().AddDate(0, 0, 30)), // 30 days
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "oxyl",
@@ -89,9 +91,9 @@ type TokenPair struct {
 	AccessToken struct {
 		Token     string    `json:"token"`
 		ExpiresAt time.Time `json:"expires_at"`
-	}
+	} `json:"access_token"`
 	RefreshToken struct {
 		Token     string    `json:"token"`
 		ExpiresAt time.Time `json:"expires_at"`
-	}
+	} `json:"refresh_token"`
 }

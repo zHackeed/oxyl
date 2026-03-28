@@ -8,7 +8,7 @@ DO $$ BEGIN
             'DISCORD',
             'SLACK'
         );
-END IF;
+    END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_type') THEN
         CREATE TYPE notification_type AS ENUM (
@@ -22,7 +22,7 @@ END IF;
             'AGENT_DISK_HEALTH_THRESHOLD',
             'AGENT_NETWORK_USAGE_THRESHOLD'
         );
-END IF;
+    END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'agent_status') THEN
         CREATE TYPE agent_status AS ENUM (
@@ -31,7 +31,7 @@ END IF;
             'MAINTENANCE',
             'INACTIVE'
         );
-END IF;
+    END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS users(
@@ -72,8 +72,8 @@ CREATE TABLE IF NOT EXISTS company_members(
     permission_bitwise int NOT NULL DEFAULT 0,  /* todo: Permission bits, will be defined better upon handling */
 
     PRIMARY KEY (user_id, company_id), /* A user can be a member of multiple companies and a company can have multiple users, many to many relationship. */
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (company_id) REFERENCES companies(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS company_notification_settings(
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS company_notification_settings(
     endpoint varchar(255) NOT NULL,
     metakeys jsonb, /* This will hold the metakeys for the notification, the body that needs to be sent. */
 
-    FOREIGN KEY (holder) REFERENCES companies(id)
+    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS company_notification_thresholds(
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS company_notification_thresholds(
     notification_type notification_type NOT NULL,
     value int NOT NULL,
 
-    FOREIGN KEY (holder) REFERENCES companies(id)
+    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 --- Agents related information
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS agents(
     last_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (holder) REFERENCES companies(id)
+    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS agent_partition_scheme(
@@ -129,39 +129,39 @@ CREATE TABLE IF NOT EXISTS agent_partition_scheme(
     is_raid boolean NOT NULL DEFAULT false,
     raid_level int,
 
-    FOREIGN KEY (agent) REFERENCES agents(id)
+    FOREIGN KEY (agent) REFERENCES agents(id) ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE (agent, mount_point) -- An agent can have multiple partitions, but the agent <-> mount point is unique for each agent
 );
 
 CREATE TABLE IF NOT EXISTS agent_general_metrics(
-    timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    agent varchar(26) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    agent TEXT NOT NULL,
     cpu_usage float NOT NULL,
-    memory_usage float NOT NULL,
+    memory_usage float NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_disk_metrics(
-    timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    agent varchar(26) NOT NULL,
-    mount_point varchar(255) NOT NULL,
-    disk_usage float NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    agent TEXT NOT NULL,
+    mount_point TEXT NOT NULL,
+    disk_usage float NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_physical_disk_metrics(
-    timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    agent varchar(26) NOT NULL,
-    disk_path varchar(32) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    agent TEXT NOT NULL,
+    disk_path TEXT NOT NULL,
 
     health_left bigint NOT NULL, /* smart info health left percentage */
-    media_errors int NOT NULL, /* smart info media errors count */
+    media_errors int NOT NULL /* smart info media errors count */
 );
 
 CREATE TABLE IF NOT EXISTS agent_network_metrics(
-    timestamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    agent varchar(26) NOT NULL,
-    interface varchar(255) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    agent TEXT NOT NULL,
+    interface TEXT NOT NULL,
     rx_bytes bigint NOT NULL,
-    tx_bytes bigint NOT NULL,
+    tx_bytes bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_notification_logs(
@@ -173,11 +173,12 @@ CREATE TABLE IF NOT EXISTS agent_notification_logs(
     ack boolean NOT NULL DEFAULT false,
     sent_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY (identifier, sent_at)
+    PRIMARY KEY (identifier, sent_at),
+    FOREIGN KEY (agent) REFERENCES agents(id)
 );
 
-SELECT create_hypertable('agent_general_metrics', 'timestamp', partition_column => 'agent', chunk_time_interval => interval '1 day');
-SELECT create_hypertable('agent_disk_metrics', 'timestamp', partition_column => 'agent', chunk_time_interval => interval '1 day');
-SELECT create_hypertable('agent_physical_disk_metrics', 'timestamp', partition_column => 'agent', chunk_time_interval => interval '1 day');
-SELECT create_hypertable('agent_network_metrics', 'timestamp', partition_column => 'agent', chunk_time_interval => interval '1 day');
+SELECT create_hypertable('agent_general_metrics', 'timestamp', chunk_time_interval => interval '1 day');
+SELECT create_hypertable('agent_disk_metrics', 'timestamp', chunk_time_interval => interval '1 day');
+SELECT create_hypertable('agent_physical_disk_metrics', 'timestamp', chunk_time_interval => interval '1 day');
+SELECT create_hypertable('agent_network_metrics', 'timestamp', chunk_time_interval => interval '1 day');
 

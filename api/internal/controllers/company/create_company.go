@@ -1,8 +1,9 @@
 package company
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/service"
@@ -28,18 +29,19 @@ func (c *CreateCompanyController) GetPath() string {
 	return "/company/create"
 }
 
-func (c *CreateCompanyController) GetRequestModel() interface{} {
-	return requests.CreateCompanyRequest{}
+func (c *CreateCompanyController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.CreateCompanyRequest{})
 }
 
 func (c *CreateCompanyController) Handle(ctx fiber.Ctx) error {
-	request, ok := ctx.Locals(bind.JSON).(*requests.CreateCompanyRequest)
+	request, ok := ctx.Locals(c.RequestRequirements().GetValidationType()).(*requests.CreateCompanyRequest)
 	if !ok {
 		return fiber.ErrInternalServerError
 	}
 
-	_, err := c.companyService.CreateCompany(ctx.Context(), request.DisplayName)
+	_, err := c.companyService.CreateCompany(ctx, request.DisplayName)
 	if err != nil {
+		slog.Error("unable to create company", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

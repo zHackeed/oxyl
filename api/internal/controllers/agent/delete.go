@@ -1,8 +1,13 @@
 package agent
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -26,16 +31,22 @@ func (d *DeleteAgentController) GetPath() string {
 	return "/agent/:agent_id"
 }
 
-func (d *DeleteAgentController) GetRequestModel() interface{} {
-	return nil
+func (d *DeleteAgentController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.URIData, requests.AgentIdUri{})
 }
 
 func (d *DeleteAgentController) Handle(ctx fiber.Ctx) error {
-	agentID := ctx.Params("agent_id")
-	if agentID == "" {
-		return fiber.ErrBadRequest
+	request, ok := ctx.Locals(d.RequestRequirements().GetValidationType()).(*requests.AgentIdUri)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
-	if err := d.agentService.DeleteAgent(ctx.Context(), agentID); err != nil {
+
+	if err := d.agentService.DeleteAgent(ctx, request.AgentId); err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to delete agent", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

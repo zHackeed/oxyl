@@ -1,10 +1,13 @@
 package company
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -28,22 +31,22 @@ func (m *ModifyThresholdController) GetPath() string {
 	return "/company/:id/thresholds"
 }
 
-func (m *ModifyThresholdController) GetRequestModel() interface{} {
-	return requests.ModifyThresholdRequest{}
+func (m *ModifyThresholdController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.ModifyThresholdRequest{})
 }
 
 func (m *ModifyThresholdController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
-	}
-
-	request, ok := ctx.Locals(bind.JSON).(*requests.ModifyThresholdRequest)
+	request, ok := ctx.Locals(m.RequestRequirements().GetValidationType()).(*requests.ModifyThresholdRequest)
 	if !ok {
 		return fiber.ErrInternalServerError
 	}
 
-	if err := m.companyService.SetNotificationThreshold(ctx.Context(), companyID, request.NotificationType, request.Threshold); err != nil {
+	if err := m.companyService.SetNotificationThreshold(ctx, request.CompanyId, request.NotificationType, request.Threshold); err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to modify threshold", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

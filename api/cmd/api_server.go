@@ -7,13 +7,15 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
+	fiberRecover "github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/spf13/cobra"
 	"zhacked.me/oxyl/api/internal/controllers/agent"
 	"zhacked.me/oxyl/api/internal/controllers/company"
 	"zhacked.me/oxyl/api/internal/controllers/user"
 	"zhacked.me/oxyl/api/internal/middlewares"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/validator"
 	"zhacked.me/oxyl/shared/pkg/datasource"
 	"zhacked.me/oxyl/shared/pkg/logger"
 	"zhacked.me/oxyl/shared/pkg/service"
@@ -69,10 +71,19 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	ctx := cmd.Context()
 
 	httpServer := fiber.New(fiber.Config{
-		AppName:       "oxyl-api",
-		ServerHeader:  "oxyl",
-		CaseSensitive: false,
+		AppName:         fmt.Sprintf("oxyl-api-%s", version.CommitID),
+		ServerHeader:    "oxyl",
+		CaseSensitive:   false,
+		StructValidator: validator.NewStructValidator(),
 	})
+
+	httpServer.Use(fiberRecover.New(
+		fiberRecover.Config{
+			EnableStackTrace: true,
+		},
+	))
+
+	httpServer.Use(requestid.New())
 
 	unprotectedRoutes := []apiModel.Registrable{
 		user.NewRegisterController(userService),
@@ -107,7 +118,11 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	registerRoutes(apiGroupRoute, protectedRoutes...)
 
 	go func() {
-		if err := httpServer.Listen(":19999"); err != nil {
+		slog.Info("starting http server", slog.Int("port", 19999))
+		if err := httpServer.Listen(":19999", fiber.ListenConfig{
+			DisableStartupMessage: true,
+			EnablePrintRoutes:     true,
+		}); err != nil {
 			slog.Error("unable to start http server", "error", err)
 		}
 	}()
@@ -163,13 +178,11 @@ func registerRoutes(router fiber.Router, registrable ...apiModel.Registrable) {
 			continue
 		}
 
-		if route.GetRequestModel() != nil {
-			router.Use(route.GetPath(), bind.New(bind.Config{
-				Source: bind.JSON,
-				// todo: create global struct validator
-			}, route.GetRequestModel()))
+		if route.RequestRequirements() != nil {
+			schemaValidator := middlewares.NewSchemaValidator(route.RequestRequirements().GetValidationType(), route.RequestRequirements().GetModel())
+			router.Add([]string{string(route.GetMethod())}, route.GetPath(), schemaValidator.Handle, route.Handle)
+		} else {
+			router.Add([]string{string(route.GetMethod())}, route.GetPath(), route.Handle)
 		}
-
-		router.Add([]string{string(route.GetMethod())}, route.GetPath(), route.Handle)
 	}
 }

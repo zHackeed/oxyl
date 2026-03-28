@@ -1,8 +1,13 @@
 package company
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -26,18 +31,23 @@ func (t *ThresholdsController) GetPath() string {
 	return "/company/:id/thresholds"
 }
 
-func (t *ThresholdsController) GetRequestModel() interface{} {
-	return nil
+func (t *ThresholdsController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.QueryData, requests.CompanyIdUri{})
 }
 
 func (t *ThresholdsController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
+	request, ok := ctx.Locals(t.RequestRequirements().GetValidationType()).(*requests.CompanyIdUri)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	thresholds, err := t.companyService.GetNotificationThresholds(ctx.Context(), companyID)
+	thresholds, err := t.companyService.GetNotificationThresholds(ctx, request.CompanyId)
 	if err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to get company thresholds", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

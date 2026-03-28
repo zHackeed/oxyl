@@ -1,8 +1,13 @@
 package company
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -26,17 +31,22 @@ func (d *DeleteCompanyController) GetPath() string {
 	return "/company/:id"
 }
 
-func (d *DeleteCompanyController) GetRequestModel() interface{} {
-	return nil
+func (d *DeleteCompanyController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.URIData, requests.CompanyIdUri{})
 }
 
 func (d *DeleteCompanyController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
+	request, ok := ctx.Locals(d.RequestRequirements().GetValidationType()).(*requests.CompanyIdUri)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	if err := d.companyService.Delete(ctx.Context(), companyID); err != nil {
+	if err := d.companyService.Delete(ctx, request.CompanyId); err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to delete company", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

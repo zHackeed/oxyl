@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -198,6 +199,14 @@ func (c *CompanyService) Delete(ctx context.Context, companyId string) error {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
 		return models.ErrPermissionDenied
+	}
+
+	if companyId == "" {
+		return errors.New("company id is empty")
+	}
+
+	if len(companyId) > 26 {
+		return errors.New("company id is too long, maybe malformed")
 	}
 
 	membership, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)

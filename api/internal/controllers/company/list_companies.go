@@ -26,13 +26,12 @@ func (l *ListCompaniesController) GetPath() string {
 	return "/company"
 }
 
-func (l *ListCompaniesController) GetRequestModel() interface{} {
-	// Get does not have a body.
+func (l *ListCompaniesController) RequestRequirements() *apiModel.RequestRequirements {
 	return nil
 }
 
 func (l *ListCompaniesController) Handle(ctx fiber.Ctx) error {
-	companies, err := l.companyService.GetCompanies(ctx.Context())
+	companies, err := l.companyService.GetCompanies(ctx)
 	if err != nil {
 		return fiber.ErrInternalServerError
 	}

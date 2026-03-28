@@ -1,10 +1,13 @@
 package company
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -28,22 +31,22 @@ func (a *AddMemberController) GetPath() string {
 	return "/company/:id/member"
 }
 
-func (a *AddMemberController) GetRequestModel() interface{} {
-	return requests.AddMemberRequest{}
+func (a *AddMemberController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.MixedData, requests.AddMemberRequest{})
 }
 
 func (a *AddMemberController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
-	}
-	request, ok := ctx.Locals(bind.JSON).(*requests.AddMemberRequest)
-
+	request, ok := ctx.Locals(a.RequestRequirements().GetValidationType()).(*requests.AddMemberRequest)
 	if !ok {
 		return fiber.ErrInternalServerError
 	}
 
-	if err := a.companyService.AddUserToCompany(ctx.Context(), companyID, request.UserEmail, int(request.Permission)); err != nil {
+	if err := a.companyService.AddUserToCompany(ctx, request.CompanyId, request.UserEmail, int(request.Permission)); err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to add member to company", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

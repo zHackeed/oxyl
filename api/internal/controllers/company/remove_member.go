@@ -2,9 +2,11 @@ package company
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 	"zhacked.me/oxyl/shared/pkg/storage"
@@ -30,28 +32,24 @@ func (r *RemoveMemberController) GetPath() string {
 	return "/company/:company_id/member/:user_id"
 }
 
-func (r *RemoveMemberController) GetRequestModel() interface{} {
-	return nil
+func (r *RemoveMemberController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.JSONData, nil)
 }
 
 func (r *RemoveMemberController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("company_id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
+	request, ok := ctx.Locals(r.RequestRequirements().GetValidationType()).(*requests.RemoveMemberRequest)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	userID := ctx.Params("user_id")
-	if userID == "" {
-		return fiber.ErrBadRequest
-	}
-
-	if err := r.companyService.RemoveUserFromCompany(ctx.Context(), companyID, userID); err != nil {
+	if err := r.companyService.RemoveUserFromCompany(ctx, request.CompanyId, request.UserID); err != nil {
 		switch {
 		case errors.Is(err, storage.ErrMemberNotFound):
 			return fiber.ErrNotFound
 		case errors.Is(err, models.ErrPermissionDenied):
 			return fiber.ErrForbidden
 		default:
+			slog.Error("unable to remove member from company", "error", err)
 			return fiber.ErrInternalServerError
 		}
 	}

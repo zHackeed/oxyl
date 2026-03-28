@@ -22,8 +22,7 @@ func (r *RefreshController) GetPath() string {
 	return "/auth/refresh"
 }
 
-func (r *RefreshController) GetRequestModel() interface{} {
-	// We don't need body for the refresh token endpoint.
+func (r *RefreshController) RequestRequirements() *apiModel.RequestRequirements {
 	return nil
 }
 
@@ -46,7 +45,7 @@ func (r *RefreshController) Handle(ctx fiber.Ctx) error {
 
 	token = token[len("Bearer "):] // Strip "Bearer "
 
-	tokenPair, err := r.tokenService.RefreshToken(ctx.Context(), token)
+	tokenPair, err := r.tokenService.RefreshToken(ctx, token)
 	if err != nil {
 		return fiber.ErrUnauthorized
 	}

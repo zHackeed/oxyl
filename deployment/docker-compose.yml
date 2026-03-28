@@ -1,0 +1,61 @@
+name: oxyl
+
+networks:
+  oxyl:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+
+services:
+  redis:
+    networks:
+      - oxyl
+    image: redis:8.6.2-alpine
+    container_name: redis-oxyl
+    volumes:
+      - redis-data:/data
+      - ./conf.d/redis.conf:/etc/redis/redis.conf
+    ports:
+    #Todo: remove
+      - "6379:6379"
+    environment:
+      REDIS_PASS: ${REDIS_PASS:?REDIS_PASS is required}
+    command:
+      - /bin/sh
+      - -c
+      - redis-server /etc/redis/redis.conf --requirepass "$${REDIS_PASS:?REDIS_PASS is required}"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  tigerdb:
+    networks:
+      - oxyl
+    image: timescale/timescaledb:latest-pg17
+    container_name: tigerdb-oxyl
+    volumes:
+      - ./init.d/database-schema.sql:/docker-entrypoint-initdb.d/database-schema.sql
+      - tigerdb-data:/var/lib/postgresql/data
+    ports:
+      #Todo: remove
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      POSTGRES_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      POSTGRES_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${TIGERDB_USER}", "-d", "${TIGERDB_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  redis-data:
+    driver: local
+    name: redis-data
+  tigerdb-data:
+    driver: local
+    name: tigerdb-data

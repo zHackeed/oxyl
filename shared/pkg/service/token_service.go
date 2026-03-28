@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"time"
@@ -34,7 +35,12 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 		return nil, fmt.Errorf("unable to read private key file: %w", err)
 	}
 
-	privateKey, err := x509.ParsePKCS8PrivateKey(privateKeyFile)
+	block, _ := pem.Decode(privateKeyFile)
+	if block == nil {
+		return nil, fmt.Errorf("no PEM data found in private key file")
+	}
+
+	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse private key: %w", err)
 	}

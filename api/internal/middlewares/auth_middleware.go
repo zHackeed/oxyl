@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/shared/pkg/models"
@@ -28,7 +30,7 @@ func (a *AuthMiddleware) GetPath() string {
 	return ""
 }
 
-func (a *AuthMiddleware) GetRequestModel() interface{} {
+func (a *AuthMiddleware) RequestRequirements() *apiModel.RequestRequirements {
 	return nil
 }
 
@@ -43,12 +45,16 @@ func (a *AuthMiddleware) Handle(ctx fiber.Ctx) error {
 
 	parsedToken, err := a.tokenService.ParseToken(token)
 	if err != nil {
+		slog.Error("unable to parse token", "error", err)
 		return fiber.ErrUnauthorized
 	}
 
 	if parsedToken.Type != models.TokenTypeUser {
+		slog.Error("invalid token type", "token_type", parsedToken.Type)
 		return fiber.ErrUnauthorized
 	}
+
+	slog.Info("token parsed successfully", "user_id", parsedToken.Identifier)
 
 	ctx.Locals(models.ContextKeyUser, parsedToken.Identifier)
 	return ctx.Next()

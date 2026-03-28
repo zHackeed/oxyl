@@ -1,8 +1,12 @@
 package agent
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -23,21 +27,25 @@ func (l *ListAgentsController) GetMethod() apiModel.HttpMethod {
 }
 
 func (l *ListAgentsController) GetPath() string {
-	return "/company/:id/agent"
+	return "/company/:company_id/agents"
 }
 
-func (l *ListAgentsController) GetRequestModel() interface{} {
-	return nil
+func (l *ListAgentsController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.URIData, requests.CompanyIdUri{})
 }
 
 func (l *ListAgentsController) Handle(ctx fiber.Ctx) error {
-	companyID := ctx.Params("id")
-	if companyID == "" {
-		return fiber.ErrBadRequest
+	request, ok := ctx.Locals(l.RequestRequirements().GetValidationType()).(*requests.CompanyIdUri)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	agents, err := l.agentService.GetAgents(ctx.Context(), companyID)
+	agents, err := l.agentService.GetAgents(ctx, request.CompanyId)
 	if err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
 		return fiber.ErrInternalServerError
 	}
 

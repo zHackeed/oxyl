@@ -1,10 +1,13 @@
 package agent
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/gofiber/fiber/v3"
-	bind "github.com/idan-fishman/fiber-bind"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -25,25 +28,25 @@ func (t *ToggleMaintenanceController) GetMethod() apiModel.HttpMethod {
 }
 
 func (t *ToggleMaintenanceController) GetPath() string {
-	return "/agent/:agent_id/maintenance"
+	return "/agent/:id/maintenance"
 }
 
-func (t *ToggleMaintenanceController) GetRequestModel() interface{} {
-	return requests.UpdateAgentStatusRequest{}
+func (t *ToggleMaintenanceController) RequestRequirements() *apiModel.RequestRequirements {
+	return apiModel.NewRequestRequirements(apiModel.MixedData, requests.UpdateAgentStatusRequest{})
 }
 
 func (t *ToggleMaintenanceController) Handle(ctx fiber.Ctx) error {
-	agentID := ctx.Params("agent_id")
-	if agentID == "" {
-		return fiber.ErrBadRequest
-	}
-
-	request, ok := ctx.Locals(bind.JSON).(*requests.UpdateAgentStatusRequest)
+	request, ok := ctx.Locals(t.RequestRequirements().GetValidationType()).(*requests.UpdateAgentStatusRequest)
 	if !ok {
 		return fiber.ErrInternalServerError
 	}
 
-	if err := t.agentService.UpdateAgentStatus(ctx.Context(), agentID, request.Status); err != nil {
+	if err := t.agentService.UpdateAgentStatus(ctx, request.Agent, request.Status); err != nil {
+		if errors.Is(err, models.ErrPermissionDenied) {
+			return fiber.ErrForbidden
+		}
+
+		slog.Error("unable to update agent status", "error", err)
 		return fiber.ErrInternalServerError
 	}
 

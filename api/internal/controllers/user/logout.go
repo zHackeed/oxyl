@@ -28,8 +28,7 @@ func (l LogoutController) GetPath() string {
 	return "/auth/logout"
 }
 
-func (l LogoutController) GetRequestModel() interface{} {
-	// We don't need body for the logout endpoint.
+func (l LogoutController) RequestRequirements() *apiModel.RequestRequirements {
 	return nil
 }
 
@@ -46,7 +45,7 @@ func (l LogoutController) Handle(ctx fiber.Ctx) error {
 
 	token = token[len("Bearer "):] // Strip "Bearer "
 
-	if err := l.tokenService.RevokeToken(ctx.Context(), token); err != nil {
+	if err := l.tokenService.RevokeToken(ctx, token); err != nil {
 		return fiber.ErrInternalServerError
 	}
 
