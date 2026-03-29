@@ -94,7 +94,15 @@ func (rc *RedisConnection) Del(ctx context.Context, key variables.RedisKey) erro
 }
 
 func (rc *RedisConnection) HashSetIfNotExists(ctx context.Context, key variables.RedisKey, field string, value any, expiration time.Duration) error {
-	return rc.conn.HSetNX(ctx, string(key), field, value).Err()
+	pipe := rc.conn.Pipeline()
+	pipe.HSetNX(ctx, string(key), field, value)
+	pipe.Expire(ctx, string(key), expiration)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to set redis key %q: %w", string(key), err)
+	}
+
+	return nil
 }
 
 func (rc *RedisConnection) HashExists(ctx context.Context, key variables.RedisKey, field string) (bool, error) {

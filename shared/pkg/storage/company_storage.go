@@ -44,7 +44,7 @@ func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Comp
 	sql = `INSERT INTO company_members (user_id, company_id, permission_bitwise) VALUES ($1, $2, $3)`
 
 	//TODO: Define permission logic adapt
-	if _, err := tx.Exec(ctx, sql, company.Holder, company.ID, models.CompanyPermission(999)); err != nil {
+	if _, err := tx.Exec(ctx, sql, company.Holder, company.ID, models.CompanyPermissionOwner); err != nil {
 		return fmt.Errorf("unable to add holder as member: %w", err)
 	}
 
@@ -209,9 +209,9 @@ func (c *CompanyStorage) GetNotificationEndpointsOfCompany(ctx context.Context, 
 	return endpoints, nil
 }
 
-func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, companyID, userID string, permission int) error {
+func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, userId, companyID string, permission int) error {
 	sql := `INSERT INTO company_members (user_id, company_id, permission_bitwise) VALUES ($1, $2, $3)`
-	if _, err := c.conn.Pool().Exec(ctx, sql, userID, companyID, permission); err != nil {
+	if _, err := c.conn.Pool().Exec(ctx, sql, userId, companyID, permission); err != nil {
 
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" { // Unique constraint violation
 			return ErrMemberAlreadyExists

@@ -16,16 +16,19 @@ import (
 
 type CompanyService struct {
 	messenger      *datasource.RedisConnection
+	userStorage    *storage.UserStorage
 	companyStorage *storage.CompanyStorage
 }
 
 func NewCompanyService(
 	messenger *datasource.RedisConnection,
 	companyStorage *storage.CompanyStorage,
+	userStorage *storage.UserStorage,
 ) *CompanyService {
 	return &CompanyService{
 		messenger:      messenger,
 		companyStorage: companyStorage,
+		userStorage:    userStorage,
 	}
 }
 
@@ -75,7 +78,7 @@ func (c *CompanyService) GetCompanies(ctx context.Context) ([]*models.Company, e
 	return c.companyStorage.GetCompaniesOfUser(ctx, userId)
 }
 
-func (c *CompanyService) AddUserToCompany(ctx context.Context, companyId, userID string, permission int) error {
+func (c *CompanyService) AddUserToCompany(ctx context.Context, companyId, userEmail string, permission int) error {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
 		return models.ErrPermissionDenied
@@ -90,14 +93,24 @@ func (c *CompanyService) AddUserToCompany(ctx context.Context, companyId, userID
 		return models.ErrPermissionDenied
 	}
 
-	err = c.companyStorage.AddMemberToCompany(ctx, companyId, userID, permission)
+	targetId, err := c.userStorage.GetIdFromEmail(ctx, userEmail)
 	if err != nil {
+		return fmt.Errorf("unable to get user: %w", err)
+	}
+
+	err = c.companyStorage.AddMemberToCompany(ctx, targetId, companyId, permission)
+	if err != nil {
+		if errors.Is(err, storage.ErrMemberAlreadyExists) {
+			// propagate the same error
+			return storage.ErrMemberAlreadyExists
+		}
+
 		return fmt.Errorf("unable to add member to company: %w", err)
 	}
 
 	if err := c.messenger.Publish(ctx, variables.RedisChannelCompanyAddedMember, redisModels.CompanyMemberAdded{
 		CompanyId: companyId,
-		UserId:    userID,
+		UserId:    targetId,
 	}); err != nil {
 		return fmt.Errorf("unable to publish company update event: %w", err)
 	}

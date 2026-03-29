@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/healthcheck"
 	fiberRecover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/spf13/cobra"
@@ -62,7 +63,10 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	}()
 
 	userStorage, companyStorage, agentStorage, tokenStorage := createStorage(timescale, redis)
-	userService, companyService, agentService, tokenService, err := createServices(userStorage, companyStorage, agentStorage, tokenStorage, redis)
+
+	userService, companyService, agentService, tokenService, err := createServices(userStorage,
+		companyStorage, agentStorage, tokenStorage, redis)
+
 	if err != nil {
 		slog.Error("unable to create services", "error", err)
 		return
@@ -72,7 +76,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 
 	httpServer := fiber.New(fiber.Config{
 		AppName:         fmt.Sprintf("oxyl-api-%s", version.CommitID),
-		ServerHeader:    "oxyl",
+		ServerHeader:    fmt.Sprintf("oxyl-api-%s", version.CommitID),
 		CaseSensitive:   false,
 		StructValidator: validator.NewStructValidator(),
 	})
@@ -85,9 +89,12 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 
 	httpServer.Use(requestid.New())
 
+	httpServer.Use(healthcheck.LivenessEndpoint, healthcheck.New())
+
 	unprotectedRoutes := []apiModel.Registrable{
 		user.NewRegisterController(userService),
 		user.NewLoginController(userService, tokenService),
+		user.NewRefreshController(tokenService),
 		user.NewLogoutController(tokenService),
 	}
 
@@ -149,8 +156,13 @@ func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *dat
 	return timescale, redis, nil
 }
 
-func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage) {
-	return storage.NewUserStorage(timescale), storage.NewCompanyStorage(timescale), storage.NewAgentStorage(timescale), storage.NewTokenStorage(redis)
+func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (
+	*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage,
+) {
+	return storage.NewUserStorage(timescale),
+		storage.NewCompanyStorage(timescale),
+		storage.NewAgentStorage(timescale),
+		storage.NewTokenStorage(redis)
 }
 
 func createServices(
@@ -166,7 +178,7 @@ func createServices(
 	}
 
 	userService := service.NewUserService(userStorage)
-	companyService := service.NewCompanyService(redis, companyStorage)
+	companyService := service.NewCompanyService(redis, companyStorage, userStorage)
 	agentService := service.NewAgentService(redis, companyStorage, agentStorage)
 
 	return userService, companyService, agentService, tokenService, nil

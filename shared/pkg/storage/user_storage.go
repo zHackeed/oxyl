@@ -44,6 +44,20 @@ func (u *UserStorage) CreateUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
+func (u *UserStorage) GetIdFromEmail(ctx context.Context, email string) (string, error) {
+	sql := `SELECT id FROM users WHERE email = $1`
+	row := u.conn.Pool().QueryRow(ctx, sql, email)
+	var userId string
+	if err := row.Scan(&userId); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrUserNotFound
+		}
+
+		return "", fmt.Errorf("unable to get user: %w", err)
+	}
+	return userId, nil
+}
+
 func (u *UserStorage) GetUser(ctx context.Context, email string) (*models.User, error) {
 	sql := `SELECT id, email, password, name, surname, enabled, last_login, created_at FROM users WHERE email = $1`
 

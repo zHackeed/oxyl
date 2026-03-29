@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS users(
     enabled boolean NOT NULL DEFAULT true,
 
     last_login timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT user_email_unique UNIQUE (email)
 );
 
 -- Companies related information

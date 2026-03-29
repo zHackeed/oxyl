@@ -1,6 +1,9 @@
 package models
 
-import "errors"
+import (
+	"errors"
+	"log/slog"
+)
 
 // todo: Rethink this, might want to have a more fine grained permission system.
 
@@ -36,5 +39,6 @@ type CompanyPermission int
 
 func HasPermission(currentPermissions CompanyPermission, required CompanyPermission) bool {
 	// we must have all the required permissions to have the permission. Match all the 1s of the required permissions.
+	slog.Info("checking permissions", "current", currentPermissions, "required", required, "has", currentPermissions&required, "result", currentPermissions&required != 0)
 	return currentPermissions&required != 0
 }

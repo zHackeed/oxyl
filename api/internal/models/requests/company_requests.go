@@ -9,7 +9,7 @@ type CreateCompanyRequest struct {
 
 // todo: validation
 type AddMemberRequest struct {
-	CompanyId  string                   `uri:"company_id" validate:"required,alphanum"`
+	CompanyId  string                   `uri:"id" validate:"required,alphanum"`
 	UserEmail  string                   `json:"user_email" validate:"required,email"`
 	Permission models.CompanyPermission `json:"permission" validate:"required,oneof=1 2 4 8 16 32 63 999"`
 }

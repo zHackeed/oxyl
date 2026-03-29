@@ -9,6 +9,7 @@ import (
 	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
+	"zhacked.me/oxyl/shared/pkg/storage"
 )
 
 var _ apiModel.Registrable = (*AddMemberController)(nil)
@@ -44,6 +45,10 @@ func (a *AddMemberController) Handle(ctx fiber.Ctx) error {
 	if err := a.companyService.AddUserToCompany(ctx, request.CompanyId, request.UserEmail, int(request.Permission)); err != nil {
 		if errors.Is(err, models.ErrPermissionDenied) {
 			return fiber.ErrForbidden
+		}
+
+		if errors.Is(err, storage.ErrMemberAlreadyExists) {
+			return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{"message": "member already exists"})
 		}
 
 		slog.Error("unable to add member to company", "error", err)

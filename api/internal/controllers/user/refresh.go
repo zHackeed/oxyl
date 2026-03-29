@@ -1,6 +1,7 @@
 package user
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -47,6 +48,7 @@ func (r *RefreshController) Handle(ctx fiber.Ctx) error {
 
 	tokenPair, err := r.tokenService.RefreshToken(ctx, token)
 	if err != nil {
+		slog.Error("unable to refresh token", "error", err)
 		return fiber.ErrUnauthorized
 	}
 

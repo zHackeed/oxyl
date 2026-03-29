@@ -1,0 +1,105 @@
+name: oxyl
+
+networks:
+  oxyl:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+
+services:
+  redis:
+    networks:
+      - oxyl
+    image: redis:8.6.2-alpine
+    volumes:
+      - redis-data:/data
+      - ./deployment/conf.d/redis.conf:/etc/redis/redis.conf
+    ports:
+    #Todo: remove
+      - "6379:6379"
+    environment:
+      REDIS_PASS: ${REDIS_PASS:?REDIS_PASS is required}
+    command:
+      - /bin/sh
+      - -c
+      - redis-server /etc/redis/redis.conf --requirepass "$${REDIS_PASS:?REDIS_PASS is required}"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  database:
+    networks:
+      - oxyl
+    image: timescale/timescaledb:latest-pg17
+    volumes:
+      - ./deployment/init.d/database-schema.sql:/docker-entrypoint-initdb.d/database-schema.sql
+      - database-data:/var/lib/postgresql/data
+    ports:
+      #Todo: remove
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      POSTGRES_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      POSTGRES_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${TIGERDB_USER}", "-d", "${TIGERDB_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  init:
+    network_mode: none
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/init.Dockerfile
+    command: ["sh", "/setup.sh"]
+    volumes:
+      - commons:/data
+      - ./deployment/init.d/setup.sh:/setup.sh
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/api.Dockerfile
+    networks:
+      - oxyl
+    volumes:
+      - commons:/data
+    environment:
+      REDIS_URI: ${REDIS_URI:?REDIS_URI is required}
+      TIGERDB_HOST: ${TIGERDB_HOST:?TIGERDB_HOST is required}
+      TIGERDB_PORT: ${TIGERDB_PORT:?TIGERDB_PORT is required}
+      TIGERDB_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      TIGERDB_PASS: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      TIGERDB_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    ports:
+      - "19999:19999"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://api:19999/livez | grep -q 'OK'" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  commons:
+    driver: local
+    name: commons
+  redis-data:
+    driver: local
+    name: redis-data
+  database-data:
+    driver: local
+    name: database-data
