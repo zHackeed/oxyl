@@ -20,3 +20,8 @@ type AgentDelete struct {
 	CompanyId string `json:"company_id"`
 	AgentId   string `json:"agent_id"`
 }
+
+type AgentEnrollment struct {
+	AgentId      string `json:"agent_id"`
+	EnrollmentId string `json:"enrollment_id"`
+}

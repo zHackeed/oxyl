@@ -255,9 +255,26 @@ func (a *AgentStorage) AddPartitionToAgent(ctx context.Context, agentID string, 
 	return nil
 }
 
-func (a *AgentStorage) AddPartitionsToAgent(ctx context.Context, agentID string, partitions []*models.AgentPartition) error {
-	tx, err := a.conn.Pool().Begin(ctx)
+func (a *AgentStorage) RemovePartitionFromAgent(ctx context.Context, agentID, mountPoint string) error {
+	sql := `DELETE FROM agent_partition_scheme WHERE agent = $1 AND mount_point = $2`
+	if _, err := a.conn.Pool().Exec(ctx, sql, agentID, mountPoint); err != nil {
+		return fmt.Errorf("unable to remove partition from agent: %w", err)
+	}
 
+	return nil
+}
+
+func (a *AgentStorage) UpdateAgentStatus(ctx context.Context, agentID string, status models.AgentStatus) error {
+	sql := `UPDATE agents SET status = $1, last_handshake = CURRENT_TIMESTAMP WHERE id = $2`
+	if _, err := a.conn.Pool().Exec(ctx, sql, status, agentID); err != nil {
+		return fmt.Errorf("unable to update agent status: %w", err)
+	}
+
+	return nil
+}
+
+func (a *AgentStorage) EnrichAgent(ctx context.Context, agentID string, systemOS, cpuModel string, totalMemory, totalDisk int64, enrollmentToken string, partitions []*models.AgentPartition) error {
+	tx, err := a.conn.Pool().Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to begin transaction: %w", err)
 	}
@@ -272,26 +289,19 @@ func (a *AgentStorage) AddPartitionsToAgent(ctx context.Context, agentID string,
 		}
 	}
 
+	sql = `UPDATE agents SET 
+                  system_os = $1, cpu_model = $2, 
+                  total_memory = $3, total_disk = $4, 
+                  enrollment_token = $5, status = 'ACTIVE', 
+                  last_handshake = CURRENT_TIMESTAMP, last_update = CURRENT_TIMESTAMP
+              WHERE id = $7`
+
+	if _, err := tx.Exec(ctx, sql, systemOS, cpuModel, totalMemory, totalDisk, enrollmentToken, agentID); err != nil {
+		return fmt.Errorf("unable to enrich agent: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("unable to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-func (a *AgentStorage) RemovePartitionFromAgent(ctx context.Context, agentID, mountPoint string) error {
-	sql := `DELETE FROM agent_partition_scheme WHERE agent = $1 AND mount_point = $2`
-	if _, err := a.conn.Pool().Exec(ctx, sql, agentID, mountPoint); err != nil {
-		return fmt.Errorf("unable to remove partition from agent: %w", err)
-	}
-
-	return nil
-}
-
-func (a *AgentStorage) UpdateAgentStatus(ctx context.Context, agentID string, status models.AgentStatus) error {
-	sql := `UPDATE agents SET status = $1, last_handshake = CURRENT_TIMESTAMP WHERE id = $2`
-	if _, err := a.conn.Pool().Exec(ctx, sql, status, agentID); err != nil {
-		return fmt.Errorf("unable to update agent status: %w", err)
 	}
 
 	return nil

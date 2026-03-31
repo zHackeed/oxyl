@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package monitoring;
+
+option go_package = "zhacked.me/oxyl/protocol/v1/monitoring";
+
+message GeneralMetrics {
+  uint64 cpu_usage = 1;
+  uint64 memory_usage = 2;
+  uint64 uptime = 3;
+}
+
+message MountedDiskMetrics {
+  uint64 used_space = 1;
+  uint64 free_space = 2;
+  uint64 read_speed = 3;
+  uint64 write_speed = 4;
+}
+
+message PhysicalDiskMetrics {
+  string disk_path = 1;
+  uint64 health_left = 2;
+  uint64 media_errors = 3;
+}
+
+message NetworkMetrics {
+  string interface_name = 1;
+  uint64 bytes_sent = 2;
+  uint64 bytes_received = 3;
+  uint64 packets_sent = 4;
+  uint64 packets_received = 5;
+}
+
+message AgentMetrics {
+  GeneralMetrics general_metrics = 1;
+  repeated MountedDiskMetrics disk_metrics = 2;
+  repeated PhysicalDiskMetrics physical_disk_metrics = 3;
+  repeated NetworkMetrics network_metrics = 4;
+}
+
+message AgentMetricsResponse {
+  bool success = 1;
+  optional string error_message = 2;
+}
+
+
+
+

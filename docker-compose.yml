@@ -92,6 +92,26 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+  ingress:
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/ingress.Dockerfile
+    networks:
+      - oxyl
+    environment:
+      REDIS_URI: ${REDIS_URI:?REDIS_URI is required}
+      TIGERDB_HOST: ${TIGERDB_HOST:?TIGERDB_HOST is required}
+      TIGERDB_PORT: ${TIGERDB_PORT:?TIGERDB_PORT is required}
+      TIGERDB_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      TIGERDB_PASS: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      TIGERDB_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    volumes:
+      - commons:/data
+    ports:
+      - "19988:19988"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   commons:

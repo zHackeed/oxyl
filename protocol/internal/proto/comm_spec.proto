@@ -1,0 +1,15 @@
+syntax = "proto3";
+package comms;
+
+option go_package = "zhacked.me/oxyl/protocol/v1";
+
+import "enrollment/enrollment_spec.proto";
+import "monitoring/monitoring_spec.proto";
+
+service EnrollmentService {
+  rpc GetEnrollmentToken (enrollment.EnrollmentRequest) returns (enrollment.EnrollmentResponse);
+}
+
+service MonitoringService {
+  rpc SendMetrics(monitoring.AgentMetrics) returns (monitoring.AgentMetricsResponse);
+}

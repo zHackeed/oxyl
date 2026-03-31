@@ -68,7 +68,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		companyStorage, agentStorage, tokenStorage, redis)
 
 	if err != nil {
-		slog.Error("unable to create services", "error", err)
+		slog.Error("unable to create service", "error", err)
 		return
 	}
 
@@ -88,7 +88,6 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	))
 
 	httpServer.Use(requestid.New())
-
 	httpServer.Use(healthcheck.LivenessEndpoint, healthcheck.New())
 
 	unprotectedRoutes := []apiModel.Registrable{

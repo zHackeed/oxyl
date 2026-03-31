@@ -19,7 +19,7 @@ coverage.*
 profile.cov
 
 # Do not publish any env config files
-**/.env
+.env
 
 # do not publish anything that we compile from our side
 builds/**

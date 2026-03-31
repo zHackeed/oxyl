@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package enrollment;
+
+option go_package = "zhacked.me/oxyl/protocol/v1/enrollment";
+
+// Send the agent information to the server to enroll. If the agent is already enrolled, the server will reject the request as a failed precondition.
+// With this we can create a hash of the data we got initially for the token, if the data is not he same as the one we have on the server,
+// we would know that the agent is not the same and should reject the request.
+message EnrollmentRequest {
+  string os_name = 1;
+  string os_version = 2;
+  string cpu_model = 3;
+
+  int64 total_memory = 4;
+  int64 total_disk = 5;
+
+  repeated DiskPartition disk_partitions = 6;
+}
+
+message DiskPartition {
+  string mount_point = 1;
+  int64 total_size = 2;
+  bool is_raid = 3;
+  optional int32 raid_level = 4;
+}
+
+message EnrollmentResponse {
+  string enrollment_id = 2;
+}

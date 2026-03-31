@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -182,4 +183,9 @@ func (t *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*
 
 func (t *TokenService) RevokeToken(ctx context.Context, tokenId string) error {
 	return t.storage.RevokeToken(ctx, tokenId)
+}
+
+func (t *TokenService) GenerateSignedToken(data interface{}) string {
+	signature := ed25519.Sign(t.privateKey, []byte(fmt.Sprintf("%v", data)))
+	return hex.EncodeToString(signature)
 }
