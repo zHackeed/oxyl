@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"zhacked.me/oxyl/ingress/cmd"
+	"zhacked.me/oxyl/agent/cmd"
 )
 
 func main() {

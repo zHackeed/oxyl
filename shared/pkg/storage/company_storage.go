@@ -22,9 +22,9 @@ type CompanyStorage struct {
 }
 
 func NewCompanyStorage(persistence *datasource.TimescaleConnection) *CompanyStorage {
-	return &CompanyStorage{
+	return new(CompanyStorage{
 		conn: persistence,
-	}
+	})
 }
 
 func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Company) error {

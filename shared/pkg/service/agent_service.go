@@ -26,11 +26,11 @@ func NewAgentService(
 	companyStorage *storage.CompanyStorage,
 	agentStorage *storage.AgentStorage,
 ) *AgentService {
-	return &AgentService{
+	return new(AgentService{
 		messenger:      messenger,
 		companyStorage: companyStorage,
 		agentStorage:   agentStorage,
-	}
+	})
 }
 
 func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredIP, holder string) (*models.Agent, error) {
@@ -157,6 +157,16 @@ func (a *AgentService) UpdateAgentStatus(ctx context.Context, agentID string, st
 		}
 	}
 
+	if agent.Status == status || agent.Status == models.AgentStatusEnrolling {
+		// Do not update if the context is the same as the current status
+		slog.Warn("agent is already on an expected status", "agent_id", agentID, "requested", status, "expected", agent.Status)
+		return nil
+	}
+
+	if err := a.agentStorage.UpdateAgentStatus(ctx, agentID, status); err != nil {
+		return fmt.Errorf("unable to update agent status on database: %w", err)
+	}
+
 	// notify agent of status update
 	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentUpdate{
 		AgentId: agentID,
@@ -186,6 +196,8 @@ func (a *AgentService) EnrichAgent(ctx context.Context, agentID string,
 	); err != nil {
 		return fmt.Errorf("unable to update agent status: %w", err)
 	}
+
+	//todo: send agent update event to poll the agent with the data that is needed for the agent enrich interface
 
 	return nil
 }

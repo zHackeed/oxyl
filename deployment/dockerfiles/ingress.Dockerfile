@@ -15,7 +15,7 @@ COPY protocol/go.* ./protocol/
 COPY go.* ./
 
 # remove api from the go.work as we are not building it. lmao
-RUN sed -i 's|./api||g' go.work && go mod download
+RUN sed -i 's|./api||g' go.work && sed -i 's|./agent||g' go.work && go mod download
 
 COPY ingress ./ingress
 COPY shared ./shared

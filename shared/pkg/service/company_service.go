@@ -25,11 +25,11 @@ func NewCompanyService(
 	companyStorage *storage.CompanyStorage,
 	userStorage *storage.UserStorage,
 ) *CompanyService {
-	return &CompanyService{
+	return new(CompanyService{
 		messenger:      messenger,
 		companyStorage: companyStorage,
 		userStorage:    userStorage,
-	}
+	})
 }
 
 func (c *CompanyService) CreateCompany(ctx context.Context, displayName string) (*models.Company, error) {

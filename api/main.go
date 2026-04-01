@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ func main() {
 	defer cancel()
 
 	if err := cmd.Execute(ctx); err != nil {
-		panic(err)
+		slog.Error("failed to start up", "error", err)
+		os.Exit(1)
 	}
 }

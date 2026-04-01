@@ -24,7 +24,7 @@ type Agent struct {
 	Holder string `json:"holder"` // Company ID that is the owner of the agent
 
 	DisplayName  string `json:"display_name"`
-	RegisteredIP string `json:"registered_ip"`
+	RegisteredIP net.IP `json:"registered_ip"`
 
 	Status AgentStatus `json:"status"`
 
@@ -56,12 +56,12 @@ func NewPartition(mountPoint string, totalSize int64, raid bool, raidLevel int) 
 		return nil, errors.New("raid level is not valid")
 	}
 
-	return &AgentPartition{
+	return new(AgentPartition{
 		MountPoint: mountPoint,
 		TotalSize:  totalSize,
 		Raid:       raid,
 		RaidLevel:  raidLevel,
-	}, nil
+	}), nil
 }
 
 func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
@@ -90,16 +90,16 @@ func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
 		return nil, fmt.Errorf("the registered ip %q is not valid, maybe malformed", registeredIP)
 	}
 
-	return &Agent{
+	return new(Agent{
 		ID:           ulid.Make().String(),
 		Holder:       holder,
 		DisplayName:  displayName,
-		RegisteredIP: parsedIp.String(),
+		RegisteredIP: parsedIp,
 		Partitions:   make([]*AgentPartition, 0),
 		Status:       AgentStatusEnrolling,
 		LastUpdated:  time.Now(),
 		CreatedAt:    time.Now(),
-	}, nil
+	}), nil
 }
 
 func (a *Agent) UpdateDisplayName(displayName string) error {
@@ -126,7 +126,7 @@ func (a *Agent) UpdateRegisteredIP(registeredIP string) error {
 		return fmt.Errorf("the registered ip %q is not valid, maybe malformed", registeredIP)
 	}
 
-	a.RegisteredIP = parsedIp.String()
+	a.RegisteredIP = parsedIp
 	a.LastUpdated = time.Now()
 	return nil
 }

@@ -13,9 +13,9 @@ type TokenStorage struct {
 }
 
 func NewTokenStorage(persistence *datasource.RedisConnection) *TokenStorage {
-	return &TokenStorage{
+	return new(TokenStorage{
 		conn: persistence,
-	}
+	})
 }
 
 func (t *TokenStorage) RevokeToken(ctx context.Context, tokenId string) error {

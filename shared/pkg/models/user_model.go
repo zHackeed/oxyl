@@ -50,7 +50,7 @@ func NewUser(name, surname, email, password string) (*User, error) {
 		return nil, fmt.Errorf("unable to hash password: %w", err)
 	}
 
-	return &User{
+	return new(User{
 		ID:        ulid.Make().String(),
 		Email:     email,
 		Password:  string(hashedPassword),
@@ -58,7 +58,7 @@ func NewUser(name, surname, email, password string) (*User, error) {
 		Surname:   surname,
 		Enabled:   true,
 		CreatedAt: time.Now(),
-	}, nil
+	}), nil
 }
 
 func (u *User) UpdateName(name, surname string) error {

@@ -2,10 +2,18 @@ package storage
 
 import (
 	"context"
+	sql2 "database/sql"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"zhacked.me/oxyl/shared/pkg/datasource"
 	"zhacked.me/oxyl/shared/pkg/models"
+)
+
+var (
+	ErrAgentNotFound = errors.New("agent not found")
+	ErrNoAgents      = errors.New("no agents found for this company")
 )
 
 type AgentStorage struct {
@@ -13,9 +21,9 @@ type AgentStorage struct {
 }
 
 func NewAgentStorage(persistence *datasource.TimescaleConnection) *AgentStorage {
-	return &AgentStorage{
+	return new(AgentStorage{
 		conn: persistence,
-	}
+	})
 }
 
 func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) error {
@@ -49,16 +57,21 @@ func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) err
 }
 
 func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
-	sql := `SELECT holder, display_name, registered_ip, status, system_os, cpu_model, total_memory, total_disk, last_handshake, created_at FROM agents WHERE id = $1`
+	sql := `SELECT id, holder, display_name, registered_ip, status, system_os, cpu_model, total_memory, total_disk, last_handshake, created_at FROM agents WHERE id = $1`
 	row := a.conn.Pool().QueryRow(ctx, sql, agentID)
 	var agent models.Agent
 
+	// systemOs, cpuModel, totalMemory, totalDisk are nullable
+	var systemOS, cpuModel sql2.NullString
+	var totalMemory, totalDisk sql2.NullInt64
+	var lastHandshake sql2.NullTime
+
 	if err := row.Scan(
+		&agent.ID,
 		&agent.Holder, &agent.DisplayName,
 		&agent.RegisteredIP, &agent.Status,
-		&agent.SystemOS, &agent.CPUModel,
-		&agent.TotalMemory, &agent.TotalDisk,
-		&agent.LastHandshake, &agent.CreatedAt); err != nil {
+		&systemOS, &cpuModel, &totalMemory, &totalDisk,
+		&lastHandshake, &agent.CreatedAt); err != nil {
 		return nil, fmt.Errorf("unable to get agent: %w", err)
 	}
 
@@ -67,10 +80,27 @@ func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Ag
 		return &agent, nil
 	}
 
+	agent.SystemOS = systemOS.String
+	agent.CPUModel = cpuModel.String
+	agent.TotalMemory = totalMemory.Int64
+	agent.TotalDisk = totalDisk.Int64
+
+	// the last connection might not have been ever done
+	if lastHandshake.Valid {
+		agent.LastHandshake = lastHandshake.Time
+	}
+
 	sql = `SELECT mount_point, total_size, is_raid, raid_level FROM agent_partition_scheme WHERE agent = $1`
 	rows, err := a.conn.Pool().Query(ctx, sql, agentID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAgentNotFound
+		}
 		return nil, fmt.Errorf("unable to get agent partitions: %w", err)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("unable to get agent partitions: %w", rows.Err())
 	}
 
 	agent.Partitions = make([]*models.AgentPartition, 0)
@@ -181,6 +211,9 @@ func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string)
 
 	rows, err := a.conn.Pool().Query(ctx, sql, companyID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNoAgents
+		}
 		return nil, fmt.Errorf("unable to get agents of company: %w", err)
 	}
 

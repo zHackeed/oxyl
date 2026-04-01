@@ -31,18 +31,18 @@ func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token
 		return nil, errors.New("holder is nil")
 	}
 
-	return &Token{
+	return new(Token{
 		Holder:     holder,
 		Identifier: identifier,
 		Type:       tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        ulid.Make().String(),
-			Audience:  []string{"https://api.oxyl.zhacked.me", "https://nexus.oxyl.zhacked.me"},
+			Audience:  []string{"https://api.oxyl.zhacked.me", "https://ingress.oxyl.zhacked.me"},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "oxyl",
 		},
-	}, nil
+	}), nil
 }
 
 type RefreshToken struct {

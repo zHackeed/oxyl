@@ -89,6 +89,7 @@ func startNexus(cmd *cobra.Command, _ []string) {
 		grpc.ChainUnaryInterceptor(
 			agentAuthInterceptor.Intercept,
 			agentEnrollmentInterceptor.Intercept,
+			interceptor.NewLoggingInterceptor().Intercept,
 		),
 	)
 

@@ -20,9 +20,9 @@ type UserService struct {
 }
 
 func NewUserService(userStorage *storage.UserStorage) *UserService {
-	return &UserService{
+	return new(UserService{
 		userStorage: userStorage,
-	}
+	})
 }
 
 func (u *UserService) Authenticate(ctx context.Context, email, password string) (*models.User, error) {

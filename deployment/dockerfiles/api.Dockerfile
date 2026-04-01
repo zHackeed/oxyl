@@ -13,7 +13,7 @@ COPY api/go.* ./api/
 COPY go.* ./
 COPY shared ./shared/
 
-RUN go mod download
+RUN sed -i 's|./ingress||g' go.work && sed -i 's|./agent||g' go.work && sed -i 's|./protocol||g' go.work && go mod download
 
 COPY api ./api
 

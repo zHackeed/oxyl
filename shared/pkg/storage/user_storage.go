@@ -21,9 +21,9 @@ type UserStorage struct {
 }
 
 func NewUserStorage(persistence *datasource.TimescaleConnection) *UserStorage {
-	return &UserStorage{
+	return new(UserStorage{
 		conn: persistence,
-	}
+	})
 }
 
 func (u *UserStorage) CreateUser(ctx context.Context, user *models.User) error {

@@ -6,7 +6,9 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -19,7 +21,11 @@ const (
 	tokenIssuer string = "oxyl"
 )
 
-var allowedAudiences = []string{"https://api.oxyl.zhacked.me", "https://nexus.oxyl.zhacked.me"}
+var (
+	allowedAudiences = []string{"https://api.oxyl.zhacked.me", "https://ingress.oxyl.zhacked.me"}
+
+	ErrInvalidToken = errors.New("invalid token")
+)
 
 type TokenService struct {
 	parser *jwt.Parser
@@ -58,7 +64,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 
 	signingMethod := jwt.SigningMethodEdDSA
 
-	return &TokenService{
+	return new(TokenService{
 		parser: jwt.NewParser(
 			jwt.WithValidMethods([]string{signingMethod.Alg()}),
 			jwt.WithIssuer(tokenIssuer),
@@ -70,7 +76,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 		storage:    storage,
 		publicKey:  ed25519PublicKey,
 		privateKey: ed25519PrivateKey,
-	}, nil
+	}), nil
 }
 
 func (t *TokenService) CreateToken(identifier string, holder *string, tokenType models.JWTTokenType) (*models.TokenPair, error) {
@@ -122,7 +128,7 @@ func (t *TokenService) ParseToken(token string) (*models.Token, error) {
 	}
 
 	if !tokenParsed.Valid {
-		return nil, fmt.Errorf("invalid token")
+		return nil, ErrInvalidToken
 	}
 
 	claims, ok := tokenParsed.Claims.(*models.Token)
@@ -143,7 +149,7 @@ func (t *TokenService) ParseRefreshToken(ctx context.Context, token string) (*mo
 	}
 
 	if !tokenParsed.Valid {
-		return nil, fmt.Errorf("invalid refresh token")
+		return nil, ErrInvalidToken
 	}
 
 	claims, ok := tokenParsed.Claims.(*models.RefreshToken)
@@ -172,6 +178,8 @@ func (t *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse refresh token: %w", err)
 	}
+
+	slog.Info("Authentication refresh from ", slog.String("who", claims.Identifier), slog.String("type", string(claims.Type)))
 
 	err = t.storage.RevokeToken(ctx, claims.ID)
 	if err != nil {

@@ -8,10 +8,12 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	fiberRecover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/spf13/cobra"
 	"zhacked.me/oxyl/api/internal/controllers/agent"
+	agentAuth "zhacked.me/oxyl/api/internal/controllers/agent/auth"
 	"zhacked.me/oxyl/api/internal/controllers/company"
 	"zhacked.me/oxyl/api/internal/controllers/user"
 	"zhacked.me/oxyl/api/internal/middlewares"
@@ -90,11 +92,32 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	httpServer.Use(requestid.New())
 	httpServer.Use(healthcheck.LivenessEndpoint, healthcheck.New())
 
+	// global rate limit - with sliding window
+	httpServer.Use(limiter.New(
+		limiter.Config{
+			Next: func(c fiber.Ctx) bool {
+				return c.IP() == "127.0.0.1" // do not apply rate limit to localhost
+			},
+			Max:        20,
+			Expiration: 30 * time.Second,
+			KeyGenerator: func(c fiber.Ctx) string {
+				return c.Get("x-forwarded-for")
+			},
+			LimiterMiddleware: limiter.SlidingWindow{},
+		}),
+	)
+
 	unprotectedRoutes := []apiModel.Registrable{
+		// -------------- user routes
 		user.NewRegisterController(userService),
 		user.NewLoginController(userService, tokenService),
 		user.NewRefreshController(tokenService),
 		user.NewLogoutController(tokenService),
+
+		// -------------- agent routes
+		agentAuth.NewAgentRefreshController(tokenService),
+		agentAuth.NewAgentLoginController(agentService, tokenService),
+		agentAuth.NewAgentShutdownController(agentService, tokenService),
 	}
 
 	registerRoutes(httpServer, unprotectedRoutes...)
