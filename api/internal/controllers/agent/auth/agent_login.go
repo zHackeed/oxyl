@@ -22,10 +22,10 @@ type AgentLoginController struct {
 }
 
 func NewAgentLoginController(agentService *service.AgentService, tokenService *service.TokenService) *AgentLoginController {
-	return new(AgentLoginController{
+	return &AgentLoginController{
 		tokenService: tokenService,
 		agentService: agentService,
-	})
+	}
 }
 
 func (a AgentLoginController) GetMethod() apiModel.HttpMethod {

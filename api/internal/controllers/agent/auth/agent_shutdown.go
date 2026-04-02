@@ -21,10 +21,10 @@ type AgentShutdownController struct {
 }
 
 func NewAgentShutdownController(agentService *service.AgentService, tokenService *service.TokenService) *AgentShutdownController {
-	return new(AgentShutdownController{
+	return &AgentShutdownController{
 		agentService: agentService,
 		tokenService: tokenService,
-	})
+	}
 }
 
 func (a *AgentShutdownController) GetMethod() apiModel.HttpMethod {

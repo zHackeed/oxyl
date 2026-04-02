@@ -26,11 +26,11 @@ func NewAgentService(
 	companyStorage *storage.CompanyStorage,
 	agentStorage *storage.AgentStorage,
 ) *AgentService {
-	return new(AgentService{
+	return &AgentService{
 		messenger:      messenger,
 		companyStorage: companyStorage,
 		agentStorage:   agentStorage,
-	})
+	}
 }
 
 func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredIP, holder string) (*models.Agent, error) {
@@ -180,7 +180,7 @@ func (a *AgentService) UpdateAgentStatus(ctx context.Context, agentID string, st
 
 func (a *AgentService) EnrichAgent(ctx context.Context, agentID string,
 	osName, cpuModel string,
-	totalMemory, totalDisk int64,
+	totalMemory, totalDisk uint64,
 	partitions []*models.AgentPartition,
 	enrollmentToken string,
 ) error {

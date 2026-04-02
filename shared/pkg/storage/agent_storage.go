@@ -21,9 +21,9 @@ type AgentStorage struct {
 }
 
 func NewAgentStorage(persistence *datasource.TimescaleConnection) *AgentStorage {
-	return new(AgentStorage{
+	return &AgentStorage{
 		conn: persistence,
-	})
+	}
 }
 
 func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) error {
@@ -150,7 +150,7 @@ func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
 
 		// Nullable values
 		var mountPoint *string
-		var totalSize *int64
+		var totalSize *uint64
 		var isRaid *bool
 		var raidLevel *int
 
@@ -227,7 +227,7 @@ func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string)
 		var mountPoint *string
 
 		// Nullable values
-		var totalSize *int64
+		var totalSize *uint64
 		var isRaid *bool
 		var raidLevel *int
 
@@ -306,7 +306,7 @@ func (a *AgentStorage) UpdateAgentStatus(ctx context.Context, agentID string, st
 	return nil
 }
 
-func (a *AgentStorage) EnrichAgent(ctx context.Context, agentID string, systemOS, cpuModel string, totalMemory, totalDisk int64, enrollmentToken string, partitions []*models.AgentPartition) error {
+func (a *AgentStorage) EnrichAgent(ctx context.Context, agentID string, systemOS, cpuModel string, totalMemory, totalDisk uint64, enrollmentToken string, partitions []*models.AgentPartition) error {
 	tx, err := a.conn.Pool().Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to begin transaction: %w", err)

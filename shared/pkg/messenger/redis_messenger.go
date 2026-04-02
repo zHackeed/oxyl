@@ -24,10 +24,10 @@ type handlerEntry interface {
 }
 
 func NewPubSubRouter(redis *datasource.RedisConnection) *PubSubRouter {
-	return new(PubSubRouter{
+	return &PubSubRouter{
 		listener: redis,
 		handlers: make(map[variables.RedisChannel]handlerEntry),
-	})
+	}
 }
 
 func RegisterHandler[T any](router *PubSubRouter, interceptor Interceptor[T]) {

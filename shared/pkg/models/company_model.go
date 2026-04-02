@@ -63,7 +63,7 @@ func NewCompany(displayName, holder string) (*Company, error) {
 		defaultNotificationThresholds[notificationType] = 75
 	}
 
-	return new(Company{
+	return &Company{
 		ID:                     ulid.Make().String(),
 		DisplayName:            displayName,
 		Holder:                 holder,
@@ -71,7 +71,7 @@ func NewCompany(displayName, holder string) (*Company, error) {
 		NotificationThresholds: defaultNotificationThresholds,
 		Enabled:                true,
 		CreatedAt:              time.Now(),
-	}), nil
+	}, nil
 }
 
 func (c *Company) AddMember(userID string, permission int) {

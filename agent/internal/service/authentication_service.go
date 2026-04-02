@@ -63,13 +63,13 @@ func NewAuthService(identifier, loginEndpoint, refreshEndpoint, shutdownEndpoint
 
 	//todo: add enrollment token for authentication if present
 
-	srv := new(AuthenticationService{
+	srv := &AuthenticationService{
 		client:           &http.Client{},
 		identifier:       identifier,
 		loginEndpoint:    loginEndpoint,
 		refreshEndpoint:  refreshEndpoint,
 		shutdownEndpoint: shutdownEndpoint,
-	})
+	}
 
 	return srv, nil
 }
@@ -266,5 +266,5 @@ func (s *AuthenticationService) GetRequestMetadata(_ context.Context, _ ...strin
 }
 
 func (s *AuthenticationService) RequireTransportSecurity() bool {
-	return true // we require TLS (https)
+	return true // we require TLS (https) for the communication of the service
 }

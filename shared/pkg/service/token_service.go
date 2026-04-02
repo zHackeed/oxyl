@@ -64,7 +64,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 
 	signingMethod := jwt.SigningMethodEdDSA
 
-	return new(TokenService{
+	return &TokenService{
 		parser: jwt.NewParser(
 			jwt.WithValidMethods([]string{signingMethod.Alg()}),
 			jwt.WithIssuer(tokenIssuer),
@@ -76,7 +76,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 		storage:    storage,
 		publicKey:  ed25519PublicKey,
 		privateKey: ed25519PrivateKey,
-	}), nil
+	}, nil
 }
 
 func (t *TokenService) CreateToken(identifier string, holder *string, tokenType models.JWTTokenType) (*models.TokenPair, error) {

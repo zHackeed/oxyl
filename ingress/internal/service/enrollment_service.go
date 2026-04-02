@@ -57,9 +57,9 @@ func (e *EnrollmentService) GetEnrollmentToken(ctx context.Context, req *enrollm
 		return nil, status.Error(codes.FailedPrecondition, "agent cannot enroll, it is already enrolled with current status")
 	}
 
-	// agent_id|os_name|os_version|cpu_model|total_memory|total_disk|update_timestamp_unix
-	data := fmt.Sprintf("%s|%s|%s|%s|%d|%d|%v", agentId,
-		req.GetOsName(), req.GetOsVersion(),
+	// agent_id|os_name|cpu_model|total_memory|total_disk|update_timestamp_unix
+	data := fmt.Sprintf("%s|%s|%s|%d|%d|%v", agentId,
+		req.GetOsVariant(),
 		req.GetCpuModel(), req.GetTotalMemory(),
 		req.GetTotalDisk(), time.Now().Unix(),
 	)
@@ -77,7 +77,7 @@ func (e *EnrollmentService) GetEnrollmentToken(ctx context.Context, req *enrollm
 	}
 
 	if err := e.agentService.EnrichAgent(internalCtx, agentId,
-		req.GetOsName(), req.GetCpuModel(),
+		req.GetOsVariant(), req.GetCpuModel(),
 		req.GetTotalMemory(), req.GetTotalDisk(),
 		partitions, signedToken,
 	); err != nil {

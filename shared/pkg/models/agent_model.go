@@ -12,7 +12,7 @@ import (
 type AgentPartition struct {
 	MountPoint string `json:"mount_point"`
 
-	TotalSize int64 `json:"total_size"` // Bytes, might have to change
+	TotalSize uint64 `json:"total_size"` // Bytes, might have to change
 
 	Raid      bool `json:"raid"`
 	RaidLevel int  `json:"raid_level,omitempty"`
@@ -43,7 +43,7 @@ type Agent struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-func NewPartition(mountPoint string, totalSize int64, raid bool, raidLevel int) (*AgentPartition, error) {
+func NewPartition(mountPoint string, totalSize uint64, raid bool, raidLevel int) (*AgentPartition, error) {
 	if mountPoint == "" {
 		return nil, errors.New("mount point is empty")
 	}
@@ -56,12 +56,12 @@ func NewPartition(mountPoint string, totalSize int64, raid bool, raidLevel int) 
 		return nil, errors.New("raid level is not valid")
 	}
 
-	return new(AgentPartition{
+	return &AgentPartition{
 		MountPoint: mountPoint,
 		TotalSize:  totalSize,
 		Raid:       raid,
 		RaidLevel:  raidLevel,
-	}), nil
+	}, nil
 }
 
 func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
@@ -90,7 +90,7 @@ func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
 		return nil, fmt.Errorf("the registered ip %q is not valid, maybe malformed", registeredIP)
 	}
 
-	return new(Agent{
+	return &Agent{
 		ID:           ulid.Make().String(),
 		Holder:       holder,
 		DisplayName:  displayName,
@@ -99,7 +99,7 @@ func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
 		Status:       AgentStatusEnrolling,
 		LastUpdated:  time.Now(),
 		CreatedAt:    time.Now(),
-	}), nil
+	}, nil
 }
 
 func (a *Agent) UpdateDisplayName(displayName string) error {

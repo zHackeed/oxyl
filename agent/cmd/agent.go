@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"zhacked.me/oxyl/agent/internal/logger"
 	"zhacked.me/oxyl/agent/internal/service"
+	protocolV1 "zhacked.me/oxyl/protocol/v1"
 )
 
 var (
@@ -60,6 +61,17 @@ func startAgent(cmd *cobra.Command, _ []string) {
 
 	authService.StartTicking(cmd.Context())
 
+	systemInfoService, err := service.NewSystemInfoService()
+	if err != nil {
+		slog.Error("failed to create system info service", "error", err)
+		os.Exit(1)
+	}
+
+	if err := systemInfoService.CaptureData(); err != nil {
+		slog.Error("failed to capture system info", "error", err)
+		os.Exit(1)
+	}
+
 	systemRoots, err := x509.SystemCertPool()
 	if err != nil {
 		slog.Error("failed to load system cert pool", "error", err)
@@ -72,13 +84,21 @@ func startAgent(cmd *cobra.Command, _ []string) {
 			RootCAs: systemRoots,
 		})))
 
+	enrollmentService := service.NewEnrollmentService(systemInfoService)
+
+	enrollmentService.EnrollmentServiceClient = protocolV1.NewEnrollmentServiceClient(grpcClient)
+
 	if err != nil {
 		slog.Error("failed to create gRPC client", "error", err)
 		os.Exit(1)
 	}
 
 	defer grpcClient.Close()
-	
+	if err := enrollmentService.Start(cmd.Context()); err != nil {
+		slog.Error("failed to start enrollment service", "error", err)
+		os.Exit(1)
+	}
+
 	// wait for signal
 	<-cmd.Context().Done()
 
