@@ -1,8 +1,12 @@
 github.com/acobaugh/osrelease v0.1.0 h1:Yb59HQDGGNhCj4suHaFQQfBps5wyoKLSSX/J/+UifRE=
 github.com/acobaugh/osrelease v0.1.0/go.mod h1:4bFEs0MtgHNHBrmHCt67gNisnabCRAlzdVasCEGHTWY=
+github.com/anatol/smart.go v0.0.0-20260314002218-4abf60ecc43c h1:BwsMFienOo2Ww4iSJBrgJNotDkSGa6LRaeQqtPFXtTI=
+github.com/anatol/smart.go v0.0.0-20260314002218-4abf60ecc43c/go.mod h1:ukYit5s/IEmWOGZokOlZs6bIvV5xD4bly0SFawzj7+8=
 github.com/cobaugh/osrelease v0.0.0-20211111170140-20e410975bc3 h1:m3vosBF/nARdCKiUdsxghSHCArvyEZhjtwewqqIQVZk=
 github.com/cobaugh/osrelease v0.0.0-20211111170140-20e410975bc3/go.mod h1:EHKW9yNEYSBpTKzuu7Y9oOrft/UlzH57rMIB03oev6M=
 github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEycfc=
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
 golang.org/x/sys v0.41.0 h1:Ivj+2Cp/ylzLiEU89QhWblYnOE9zerudt9Ftecq2C6k=
 golang.org/x/sys v0.41.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
+golang.org/x/sys v0.42.0 h1:omrd2nAlyT5ESRdCLYdm3+fMfNFE/+Rf4bDIQImRJeo=
+golang.org/x/sys v0.42.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=

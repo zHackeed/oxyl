@@ -36,10 +36,10 @@ type Agent struct {
 
 	Partitions []*AgentPartition `json:"partitions"`
 
-	EnrollmentToken string `json:"enrollment_token"`
+	EnrollmentToken string `json:"-"`
 
-	LastHandshake time.Time `json:"last_handshake"`
-	LastUpdated   time.Time `json:"last_updated"`
+	LastHandshake time.Time `json:"last_handshake,omitempty"`
+	LastUpdated   time.Time `json:"last_updated,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 

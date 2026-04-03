@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ErrAgentMissingHeader = status.Error(codes.InvalidArgument, "agent missing header")
+	ErrAgentMissingHeader = status.Error(codes.InvalidArgument, "agent missing agent header")
 	ErrAgentInvalidHeader = status.Error(codes.Unauthenticated, "agent invalid header")
 	ErrAgentInvalidToken  = status.Error(codes.Unauthenticated, "agent invalid token")
 

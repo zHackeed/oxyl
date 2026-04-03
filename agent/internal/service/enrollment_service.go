@@ -16,6 +16,7 @@ import (
 )
 
 const enrollmentFile = "/etc/oxyl/enrollment.id"
+const enrollmentDir = "/etc/oxyl"
 
 type EnrollmentService struct {
 	enrollmentToken *string
@@ -59,9 +60,10 @@ func (s *EnrollmentService) Start(ctx context.Context) error {
 			continue
 		}
 
-		blockDevice, _ := s.systemInfoService.GetBlockDevice(blockValue)
+		slog.Info("block value", partitionData.Source)
+		blockDevice, _ := s.systemInfoService.GetPartition(blockValue)
 
-		slog.Info(partitionData.Source)
+		slog.Info("size", blockDevice.TotalSize)
 
 		totalSize = totalSize + blockDevice.TotalSize
 
@@ -100,6 +102,11 @@ func (s *EnrollmentService) Start(ctx context.Context) error {
 	}
 
 	s.enrollmentToken = &token.EnrollmentId
+
+	mkdir := os.Mkdir(enrollmentDir, 0o600)
+	if err := mkdir; err != nil {
+		return fmt.Errorf("unable to create enrollment directory: %v", err)
+	}
 
 	if err := os.WriteFile(enrollmentFile, []byte(*s.enrollmentToken), 0o600); err != nil {
 		return fmt.Errorf("unable to write enrollment file: %v", err)

@@ -2,14 +2,12 @@ package cmd
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"zhacked.me/oxyl/agent/internal/logger"
 	"zhacked.me/oxyl/agent/internal/service"
 	protocolV1 "zhacked.me/oxyl/protocol/v1"
@@ -72,30 +70,53 @@ func startAgent(cmd *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	systemRoots, err := x509.SystemCertPool()
-	if err != nil {
-		slog.Error("failed to load system cert pool", "error", err)
-		os.Exit(1)
-	}
+	/*
+		systemRoots, err := x509.SystemCertPool()
+		if err != nil {
+			slog.Error("failed to load system cert pool", "error", err)
+			os.Exit(1)
+		}
+	*/
 
 	grpcClient, err := grpc.NewClient(grpcEndpoint,
 		grpc.WithPerRPCCredentials(authService),
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-			RootCAs: systemRoots,
-		})))
-
-	enrollmentService := service.NewEnrollmentService(systemInfoService)
-
-	enrollmentService.EnrollmentServiceClient = protocolV1.NewEnrollmentServiceClient(grpcClient)
+		/*
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+				RootCAs: systemRoots,
+			}))
+		*/
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		slog.Error("failed to create gRPC client", "error", err)
 		os.Exit(1)
 	}
-
 	defer grpcClient.Close()
+
+	enrollmentService := service.NewEnrollmentService(systemInfoService)
+	enrollmentService.EnrollmentServiceClient = protocolV1.NewEnrollmentServiceClient(grpcClient)
+
 	if err := enrollmentService.Start(cmd.Context()); err != nil {
 		slog.Error("failed to start enrollment service", "error", err)
+		os.Exit(1)
+	}
+
+	token, err := enrollmentService.ProvideEnrollmentIdentifier()
+	if err == nil {
+		authService.SetEnrollmentToken(&token)
+	}
+
+	monitoringService, err := service.NewMonitoringService(systemInfoService)
+
+	if err != nil {
+		slog.Error("failed to create monitoring service", "error", err)
+		os.Exit(1)
+	}
+
+	monitoringService.MonitoringServiceClient = protocolV1.NewMonitoringServiceClient(grpcClient)
+
+	if err := monitoringService.Start(cmd.Context()); err != nil {
+		slog.Error("failed to start monitoring service", "error", err)
 		os.Exit(1)
 	}
 

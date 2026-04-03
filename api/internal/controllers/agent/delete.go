@@ -28,7 +28,7 @@ func (d *DeleteAgentController) GetMethod() apiModel.HttpMethod {
 }
 
 func (d *DeleteAgentController) GetPath() string {
-	return "/agent/:agent_id"
+	return "/agent/:id"
 }
 
 func (d *DeleteAgentController) RequestRequirements() *apiModel.RequestRequirements {

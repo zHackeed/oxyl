@@ -11,24 +11,37 @@ message GeneralMetrics {
 }
 
 message MountedDiskMetrics {
-  uint64 used_space = 1;
-  uint64 free_space = 2;
-  uint64 read_speed = 3;
-  uint64 write_speed = 4;
+  string mount_point = 1;
+  uint64 used_space = 2;
 }
 
 message PhysicalDiskMetrics {
   string disk_path = 1;
-  uint64 health_left = 2;
-  uint64 media_errors = 3;
+  optional uint32 health_used = 2;
+  // represents the lower part of the media errors
+  optional uint64 media_errors_1 = 3;
+  // represents the upper part of the media errors
+  optional uint64 media_errors_2 = 4;
+
+  optional uint64 error_rate = 5;
+
+  optional uint32 pending_sectors = 6;
 }
 
 message NetworkMetrics {
   string interface_name = 1;
-  uint64 bytes_sent = 2;
-  uint64 bytes_received = 3;
-  uint64 packets_sent = 4;
-  uint64 packets_received = 5;
+
+  uint64 bytes_sent_rate = 2;
+  uint64 bytes_received_rate = 3;
+
+  uint64 packets_sent_rate = 4;
+  uint64 packets_received_rate = 5;
+
+  uint64 bytes_sent = 6;
+  uint64 bytes_received = 7;
+
+  uint64 packets_sent = 8;
+  uint64 packets_received = 9;
 }
 
 message AgentMetrics {

@@ -259,12 +259,23 @@ func (s *AuthenticationService) RequestShutdown() error {
 // ----- gRPC authentication methods
 
 func (s *AuthenticationService) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
-	return map[string]string{
-		"authorization": "Bearer " + s.token.Token,
-		//"ag_enrollment": "",
-	}, nil
+	headers := make(map[string]string)
+	headers["authorization"] = "Bearer " + s.token.Token
+
+	if s.enrollmentToken != nil {
+		headers["ag_enrollment"] = *s.enrollmentToken
+	}
+
+	slog.Info("headers", slog.Any("headers", headers))
+
+	return headers, nil
 }
 
 func (s *AuthenticationService) RequireTransportSecurity() bool {
-	return true // we require TLS (https) for the communication of the service
+	//return true // we require TLS (https) for the communication of the service
+	return false
+}
+
+func (s *AuthenticationService) SetEnrollmentToken(token *string) {
+	s.enrollmentToken = token
 }

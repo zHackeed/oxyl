@@ -5,6 +5,7 @@ import (
 	sql2 "database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"zhacked.me/oxyl/shared/pkg/datasource"
@@ -57,12 +58,12 @@ func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) err
 }
 
 func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
-	sql := `SELECT id, holder, display_name, registered_ip, status, system_os, cpu_model, total_memory, total_disk, last_handshake, created_at FROM agents WHERE id = $1`
+	sql := `SELECT id, holder, display_name, registered_ip, status, system_os, cpu_model, total_memory, total_disk, enrollment_token, last_handshake, created_at FROM agents WHERE id = $1`
 	row := a.conn.Pool().QueryRow(ctx, sql, agentID)
 	var agent models.Agent
 
 	// systemOs, cpuModel, totalMemory, totalDisk are nullable
-	var systemOS, cpuModel sql2.NullString
+	var systemOS, cpuModel, enrollmentToken sql2.NullString
 	var totalMemory, totalDisk sql2.NullInt64
 	var lastHandshake sql2.NullTime
 
@@ -71,7 +72,8 @@ func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Ag
 		&agent.Holder, &agent.DisplayName,
 		&agent.RegisteredIP, &agent.Status,
 		&systemOS, &cpuModel, &totalMemory, &totalDisk,
-		&lastHandshake, &agent.CreatedAt); err != nil {
+		&enrollmentToken, &lastHandshake, &agent.CreatedAt,
+	); err != nil {
 		return nil, fmt.Errorf("unable to get agent: %w", err)
 	}
 
@@ -88,6 +90,10 @@ func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Ag
 	// the last connection might not have been ever done
 	if lastHandshake.Valid {
 		agent.LastHandshake = lastHandshake.Time
+	}
+
+	if enrollmentToken.Valid {
+		agent.EnrollmentToken = enrollmentToken.String
 	}
 
 	sql = `SELECT mount_point, total_size, is_raid, raid_level FROM agent_partition_scheme WHERE agent = $1`
@@ -127,7 +133,7 @@ func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
         SELECT 
             ag.id, ag.holder, ag.display_name, ag.registered_ip, 
             ag.status, ag.system_os, ag.cpu_model, ag.total_memory, 
-            ag.total_disk, ag.last_handshake, ag.created_at,
+            ag.total_disk, ag.enrollment_token, ag.last_handshake, ag.created_at,
             ap.mount_point, ap.total_size, ap.is_raid, ap.raid_level
         FROM agents ag
         LEFT JOIN agent_partition_scheme ap 
@@ -149,15 +155,17 @@ func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
 		var agent models.Agent
 
 		// Nullable values
-		var mountPoint *string
-		var totalSize *uint64
-		var isRaid *bool
-		var raidLevel *int
+
+		var mountPoint sql2.NullString
+		var totalSize sql2.NullInt64
+		var isRaid *sql2.NullBool
+		var raidLevel *sql2.NullInt32
+		var enrollmentToken *sql2.NullString
 
 		if err := rows.Scan(
 			&agentID, &agent.Holder, &agent.DisplayName, &agent.RegisteredIP,
 			&agent.Status, &agent.SystemOS, &agent.CPUModel, &agent.TotalMemory,
-			&agent.TotalDisk, &agent.LastHandshake, &agent.CreatedAt,
+			&agent.TotalDisk, &enrollmentToken, &agent.LastHandshake, &agent.CreatedAt,
 			&mountPoint, &totalSize, &isRaid, &raidLevel,
 		); err != nil {
 			return nil, fmt.Errorf("unable to scan agent row: %w", err)
@@ -169,16 +177,25 @@ func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
 			agent.Partitions = make([]*models.AgentPartition, 0)
 			agentMap[agentID] = &agent
 			agentOrder = append(agentOrder, agentID)
+
+			if enrollmentToken.Valid {
+				agent.EnrollmentToken = enrollmentToken.String
+			}
 		}
 
 		// If the mount point is not null, add the partition to the agent active agent
-		if mountPoint != nil {
-			agentMap[agentID].Partitions = append(agentMap[agentID].Partitions, &models.AgentPartition{
-				MountPoint: *mountPoint,
-				TotalSize:  *totalSize,
-				Raid:       *isRaid,
-				RaidLevel:  *raidLevel,
-			})
+		if mountPoint.Valid {
+			mountPointData := &models.AgentPartition{
+				MountPoint: mountPoint.String,
+				TotalSize:  uint64(totalSize.Int64),
+				Raid:       isRaid.Bool,
+			}
+
+			if isRaid.Valid {
+				mountPointData.RaidLevel = int(raidLevel.Int32)
+			}
+
+			agentMap[agentID].Partitions = append(agentMap[agentID].Partitions, mountPointData)
 		}
 	}
 
@@ -327,7 +344,9 @@ func (a *AgentStorage) EnrichAgent(ctx context.Context, agentID string, systemOS
                   total_memory = $3, total_disk = $4, 
                   enrollment_token = $5, status = 'ACTIVE', 
                   last_handshake = CURRENT_TIMESTAMP, last_update = CURRENT_TIMESTAMP
-              WHERE id = $7`
+              WHERE id = $6`
+
+	slog.Info("enrollment", "agent_id", agentID, "system_os", systemOS, "cpu_model", cpuModel, "total_memory", totalMemory, "total_disk", totalDisk, "enrollment_token", enrollmentToken)
 
 	if _, err := tx.Exec(ctx, sql, systemOS, cpuModel, totalMemory, totalDisk, enrollmentToken, agentID); err != nil {
 		return fmt.Errorf("unable to enrich agent: %w", err)

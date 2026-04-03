@@ -140,6 +140,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		// -------------- agent routes
 		agent.NewCreateAgentController(agentService),
 		agent.NewListAgentsController(agentService),
+		agent.NewAgentInfoController(agentService),
 		agent.NewDeleteAgentController(agentService),
 		agent.NewToggleMaintenanceController(agentService),
 	}

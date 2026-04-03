@@ -114,11 +114,14 @@ CREATE TABLE IF NOT EXISTS agents(
     total_memory bigint,
     total_disk bigint,
 
+    enrollment_token TEXT,
+
     last_handshake timestamp, /* This is the last time the agent has requested a JWT update and a heartbeat. */
     last_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT agent_unique_ip UNIQUE (holder, registered_ip) --- we can only have the same ip registered to only one agent
 );
 
 CREATE TABLE IF NOT EXISTS agent_partition_scheme(
