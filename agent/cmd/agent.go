@@ -51,6 +51,7 @@ func init() {
 }
 
 func startAgent(cmd *cobra.Command, _ []string) {
+	slog.Info("starting agent", slog.String("id", agentId))
 	authService, err := service.NewAuthService(agentId, loginEndpoint, refreshEndpoint, shutdownEndpoint)
 	if err != nil {
 		slog.Error("failed to create authentication service", "error", err)
@@ -71,6 +72,7 @@ func startAgent(cmd *cobra.Command, _ []string) {
 	}
 
 	/*
+		//todo: enforce TLS
 		systemRoots, err := x509.SystemCertPool()
 		if err != nil {
 			slog.Error("failed to load system cert pool", "error", err)

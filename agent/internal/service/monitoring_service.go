@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -47,7 +48,7 @@ func NewMonitoringService(sysInfoService *SystemInfoService) (*MonitoringService
 }
 
 func (s *MonitoringService) Start(ctx context.Context) error {
-	tick := time.NewTicker(10 * time.Second)
+	tick := time.NewTicker(1 * time.Second)
 
 	go func() {
 		for {
@@ -55,7 +56,7 @@ func (s *MonitoringService) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-tick.C:
-				if err := s.Consume(ctx, 10*time.Second); err != nil {
+				if err := s.Consume(ctx, 1*time.Second); err != nil {
 					slog.Error("failed to consume monitoring data", "error", err)
 				}
 			}
@@ -66,71 +67,29 @@ func (s *MonitoringService) Start(ctx context.Context) error {
 }
 
 func (s *MonitoringService) Consume(ctx context.Context, tickRate time.Duration) error {
+	var (
+		generalInfo      *monitoring.GeneralMetrics
+		mountPointInfo   []*monitoring.MountedDiskMetrics
+		physicalDiskInfo []*monitoring.PhysicalDiskMetrics
+		networkInfo      []*monitoring.NetworkMetrics
+	)
+
 	var g errgroup.Group
 
-	generalizeChan := make(chan *monitoring.GeneralMetrics, 1)
-	mountPointInfoChan := make(chan []*monitoring.MountedDiskMetrics, 1)
-	//physicalDiskInfoChan := make(chan []*monitoring.PhysicalDiskMetrics, 1)
-	networkInfoChan := make(chan []*monitoring.NetworkMetrics, 1)
-
-	defer func() {
-		close(generalizeChan)
-		close(mountPointInfoChan)
-		//close(physicalDiskInfoChan)
-		close(networkInfoChan)
-	}()
-
-	g.Go(func() error {
-		return s.getGeneralInfo(generalizeChan, tickRate)
-	})
-
-	g.Go(func() error {
-		return s.getMountPointInfo(mountPointInfoChan)
-	})
-
-	/*
-		g.Go(func() error {
-			return s.getPhysicalMetrics(physicalDiskInfoChan)
-		})
-
-	*/
-
-	g.Go(func() error {
-		return s.getNetworkInfo(networkInfoChan, tickRate)
-	})
+	g.Go(func() (err error) { generalInfo, err = s.getGeneralInfo(tickRate); return })
+	g.Go(func() (err error) { mountPointInfo, err = s.getMountPointInfo(); return })
+	g.Go(func() (err error) { physicalDiskInfo, err = s.getPhysicalMetrics(); return })
+	g.Go(func() (err error) { networkInfo, err = s.getNetworkInfo(tickRate); return })
 
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("failed to consume monitoring service: %w", err)
 	}
 
-	generalInfo, ok := <-generalizeChan
-	if !ok {
-		return fmt.Errorf("failed to get general info")
-	}
-
-	mountPointInfo, ok := <-mountPointInfoChan
-	if !ok {
-		return fmt.Errorf("failed to get mount point info")
-	}
-
-	/*
-		physicalDiskInfo, ok := <-physicalDiskInfoChan
-		if !ok {
-			return fmt.Errorf("failed to get physical disk info")
-		}
-	*/
-
-	networkInfo, ok := <-networkInfoChan
-	if !ok {
-		return fmt.Errorf("failed to get network info")
-	}
-
-	// we do not care if the metrics are sent or not. We will always send them regardless
 	if _, err := s.SendMetrics(ctx, &monitoring.AgentMetrics{
-		GeneralMetrics: generalInfo,
-		DiskMetrics:    mountPointInfo,
-		//PhysicalDiskMetrics: physicalDiskInfo,
-		NetworkMetrics: networkInfo,
+		GeneralMetrics:      generalInfo,
+		DiskMetrics:         mountPointInfo,
+		PhysicalDiskMetrics: physicalDiskInfo,
+		NetworkMetrics:      networkInfo,
 	}); err != nil {
 		return fmt.Errorf("failed to send metrics: %w", err)
 	}
@@ -138,17 +97,15 @@ func (s *MonitoringService) Consume(ctx context.Context, tickRate time.Duration)
 	return nil
 }
 
-func (s *MonitoringService) getGeneralInfo(consumer chan<- *monitoring.GeneralMetrics, rate time.Duration) error {
+func (s *MonitoringService) getGeneralInfo(rate time.Duration) (*monitoring.GeneralMetrics, error) {
 	timeStart := time.Now()
 	defer func() {
 		slog.Info("crawled general info", "time", time.Since(timeStart))
 	}()
 
-	generalData := new(monitoring.GeneralMetrics)
-
 	cpuStats, err := s.procFs.Stat()
 	if err != nil {
-		return fmt.Errorf("failed to get stats: %w", err)
+		return nil, fmt.Errorf("failed to get stats: %w", err)
 	}
 
 	currentCpuUsage := uint64(cpuStats.CPUTotal.User + cpuStats.CPUTotal.Nice + cpuStats.CPUTotal.System)
@@ -157,22 +114,22 @@ func (s *MonitoringService) getGeneralInfo(consumer chan<- *monitoring.GeneralMe
 		s.oldCpuUsage = currentCpuUsage
 	}
 
-	generalData.CpuUsage = (currentCpuUsage - s.oldCpuUsage) / uint64(rate.Seconds())
+	cpuUsage := (currentCpuUsage - s.oldCpuUsage) / uint64(rate.Seconds())
 	s.oldCpuUsage = currentCpuUsage
 
 	ramMetrics, err := s.procFs.Meminfo()
 	if err != nil {
-		return fmt.Errorf("failed to get memory metrics: %w", err)
+		return nil, fmt.Errorf("failed to get memory metrics: %w", err)
 	}
 
-	generalData.MemoryUsage = *ramMetrics.Active
-	generalData.Uptime = uint64(time.Now().Unix()) - cpuStats.BootTime
-
-	consumer <- generalData
-	return nil
+	return &monitoring.GeneralMetrics{
+		CpuUsage:    cpuUsage,
+		MemoryUsage: *ramMetrics.Active,
+		Uptime:      uint64(time.Now().Unix()) - cpuStats.BootTime,
+	}, nil
 }
 
-func (s *MonitoringService) getMountPointInfo(consumer chan<- []*monitoring.MountedDiskMetrics) error {
+func (s *MonitoringService) getMountPointInfo() ([]*monitoring.MountedDiskMetrics, error) {
 	timeStart := time.Now()
 	defer func() {
 		slog.Info("crawled mount point info", "time", time.Since(timeStart))
@@ -181,10 +138,9 @@ func (s *MonitoringService) getMountPointInfo(consumer chan<- []*monitoring.Moun
 	mountPointInfo := make([]*monitoring.MountedDiskMetrics, 0)
 
 	for _, mountPoint := range s.sysInfoService.GetMountPoints() {
-		slog.Info("disk partition", "mountPoint", mountPoint)
-		var stat syscall.Statfs_t // So, the kernel directly does not have any way to obtain the filesystem stats
+		var stat syscall.Statfs_t
 		if err := syscall.Statfs(mountPoint, &stat); err != nil {
-			return fmt.Errorf("failed to get mount info stats: %w", err)
+			return nil, fmt.Errorf("failed to get mount info stats: %w", err)
 		}
 
 		mountPointInfo = append(mountPointInfo, &monitoring.MountedDiskMetrics{
@@ -193,155 +149,145 @@ func (s *MonitoringService) getMountPointInfo(consumer chan<- []*monitoring.Moun
 		})
 	}
 
-	consumer <- mountPointInfo
-	return nil
+	return mountPointInfo, nil
 }
 
-func (s *MonitoringService) getPhysicalMetrics(consumer chan<- []*monitoring.PhysicalDiskMetrics) error {
+func (s *MonitoringService) getPhysicalMetrics() ([]*monitoring.PhysicalDiskMetrics, error) {
 	timeStart := time.Now()
 	defer func() {
 		slog.Info("crawled physical disk info", "time", time.Since(timeStart))
 	}()
 
-	physicalDiskInfo := make([]*monitoring.PhysicalDiskMetrics, 0)
+	var (
+		mu               sync.Mutex
+		wg               sync.WaitGroup
+		physicalDiskInfo = make([]*monitoring.PhysicalDiskMetrics, 0)
+	)
 
 	for _, disk := range s.sysInfoService.GetBlockDevices() {
-		smtDto, err := smart.Open("/dev/" + nvmeController(disk))
-		if err != nil {
-			return fmt.Errorf("failed to get smart data of disk %s: %w", disk, err)
-		}
-
-		if err != nil {
-			_ = smtDto.Close()
-			return fmt.Errorf("failed to get smart data of disk %s: %w", disk, err)
-		}
-
-		switch smtDto.(type) {
-		case *smart.NVMeDevice:
-			nvmeSmart, _ := smtDto.(*smart.NVMeDevice)
-			smartData, err := nvmeSmart.ReadSMART()
-
+		wg.Add(1)
+		go func(disk string) {
+			defer wg.Done()
+			metrics, err := s.consumeDisk(disk)
 			if err != nil {
-				_ = smtDto.Close()
-				return fmt.Errorf("failed to get smart data of disk %s: %w", disk, err)
+				slog.Debug("skipping device", "device", disk, "error", err)
+				return
 			}
-
-			physicalDiskInfo = append(physicalDiskInfo, &monitoring.PhysicalDiskMetrics{
-				DiskPath:      disk,
-				HealthUsed:    new(uint32(smartData.PercentUsed)), // nasty
-				MediaErrors_1: &smartData.MediaErrors.Val[0],
-				MediaErrors_2: &smartData.MediaErrors.Val[1],
-			})
-
-		case *smart.SataDevice:
-			sataSmart, _ := smtDto.(*smart.SataDevice)
-			smartData, err := sataSmart.ReadSMARTData()
-			if err != nil {
-				_ = smtDto.Close()
-				return fmt.Errorf("failed to get smart data: %w", err)
-			}
-
-			//https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology#Known_ATA_S.M.A.R.T._attributes
-			// I despise this
-
-			readErrorRate, exists := smartData.Attrs[1]
-			if !exists {
-				_ = smtDto.Close()
-				// So this disk does not follow standard metrics
-				continue
-			}
-
-			reallocatedSectors, exists := smartData.Attrs[5]
-			if !exists {
-				_ = smtDto.Close()
-				// So this disk does not follow standard metrics
-				continue
-			}
-
-			physicalDiskInfo = append(physicalDiskInfo, &monitoring.PhysicalDiskMetrics{
-				DiskPath:       disk,
-				ErrorRate:      new(uint64(readErrorRate.Current)),
-				PendingSectors: new(uint32(reallocatedSectors.Current)),
-			})
-		default:
-			slog.Debug("unknown device type", "device", disk)
-		}
-
-		_ = smtDto.Close()
+			mu.Lock()
+			physicalDiskInfo = append(physicalDiskInfo, metrics)
+			mu.Unlock()
+		}(disk)
 	}
 
-	consumer <- physicalDiskInfo
-	return nil
+	wg.Wait()
+	return physicalDiskInfo, nil
 }
 
-func (s *MonitoringService) getNetworkInfo(consumer chan<- []*monitoring.NetworkMetrics, rate time.Duration) error {
-	start := time.Now()
+func (s *MonitoringService) consumeDisk(disk string) (*monitoring.PhysicalDiskMetrics, error) {
+	physicalDiskInfo := new(monitoring.PhysicalDiskMetrics)
 
-	netMetrics := make([]*monitoring.NetworkMetrics, 0)
+	smtDto, err := smart.Open("/dev/" + disk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get smart data of disk %s: %w", disk, err)
+	}
+	defer smtDto.Close()
+
+	switch smtDto.(type) {
+	case *smart.NVMeDevice:
+		nvmeSmart, _ := smtDto.(*smart.NVMeDevice)
+		smartData, err := nvmeSmart.ReadSMART()
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to get smart data of disk %s: %w", disk, err)
+		}
+
+		physicalDiskInfo.DiskPath = disk
+		physicalDiskInfo.HealthUsed = new(uint32(smartData.PercentUsed)) // nasty
+		physicalDiskInfo.MediaErrors_1 = &smartData.MediaErrors.Val[0]
+		physicalDiskInfo.MediaErrors_2 = &smartData.MediaErrors.Val[1]
+
+	case *smart.SataDevice:
+		sataSmart, _ := smtDto.(*smart.SataDevice)
+		smartData, err := sataSmart.ReadSMARTData()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get smart data: %w", err)
+		}
+
+		//https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology#Known_ATA_S.M.A.R.T._attributes
+		// I despise this
+
+		readErrorRate, exists := smartData.Attrs[1]
+		if !exists {
+			// So this disk does not follow standard metrics
+			return nil, fmt.Errorf("disk %s does not follow standard metrics", disk)
+		}
+
+		reallocatedSectors, exists := smartData.Attrs[5]
+		if !exists {
+			// So this disk does not follow standard metric
+			return nil, fmt.Errorf("disk %s does not follow standard metrics", disk)
+		}
+
+		physicalDiskInfo.DiskPath = disk
+		physicalDiskInfo.ErrorRate = new(uint64(readErrorRate.Current))
+		physicalDiskInfo.PendingSectors = new(uint32(reallocatedSectors.Current))
+	default:
+		slog.Debug("unknown device type", "device", disk)
+	}
+
+	return physicalDiskInfo, nil
+}
+
+func (s *MonitoringService) getNetworkInfo(rate time.Duration) ([]*monitoring.NetworkMetrics, error) {
+	timeStart := time.Now()
+	defer func() {
+		slog.Info("crawled network info", "time", time.Since(timeStart))
+	}()
 
 	netStat, err := s.procFs.NetDev()
 	if err != nil {
-		return fmt.Errorf("failed to get netstat: %w", err)
+		return nil, fmt.Errorf("failed to get netstat: %w", err)
 	}
 
+	netMetrics := make([]*monitoring.NetworkMetrics, 0)
+
 	for _, networkInterface := range netStat {
-		if networkInterface.Name == "lo" || strings.HasPrefix(networkInterface.Name, "veth") || strings.HasPrefix(networkInterface.Name, "br-") || strings.HasPrefix(networkInterface.Name, "docker") {
+		if networkInterface.Name == "lo" ||
+			strings.HasPrefix(networkInterface.Name, "veth") ||
+			strings.HasPrefix(networkInterface.Name, "br-") ||
+			strings.HasPrefix(networkInterface.Name, "docker") {
 			continue
 		}
 
 		bytesIn, packetsIn := networkInterface.RxBytes, networkInterface.RxPackets
 		bytesOut, packetsOut := networkInterface.TxBytes, networkInterface.TxPackets
 
-		oldValueBpTx, oldValuePkTx := s.byteCounterMap[networkInterface.Name+"Tx"], s.pksCounterMap[networkInterface.Name+"Tx"]
-		oldValueBpRx, oldValuePkRx := s.byteCounterMap[networkInterface.Name+"Rx"], s.pksCounterMap[networkInterface.Name+"Rx"]
-
-		if oldValueBpTx == 0 || oldValuePkTx == 0 || oldValuePkRx == 0 || oldValueBpRx == 0 {
-			s.byteCounterMap[networkInterface.Name+"Tx"] = bytesOut
-			s.pksCounterMap[networkInterface.Name+"Tx"] = packetsOut
-			s.byteCounterMap[networkInterface.Name+"Rx"] = bytesIn
-			s.pksCounterMap[networkInterface.Name+"Rx"] = packetsIn
-			continue
-		}
-
-		valueBpTx := (networkInterface.TxBytes - oldValueBpTx) / uint64(rate.Seconds())
-		valuePkTx := (networkInterface.TxPackets - oldValuePkTx) / uint64(rate.Seconds())
-		valueBpRx := (networkInterface.RxBytes - oldValueBpRx) / uint64(rate.Seconds())
-		valuePkRx := (networkInterface.RxPackets - oldValuePkRx) / uint64(rate.Seconds())
+		oldValueBpTx := s.byteCounterMap[networkInterface.Name+"Tx"]
+		oldValuePkTx := s.pksCounterMap[networkInterface.Name+"Tx"]
+		oldValueBpRx := s.byteCounterMap[networkInterface.Name+"Rx"]
+		oldValuePkRx := s.pksCounterMap[networkInterface.Name+"Rx"]
 
 		s.byteCounterMap[networkInterface.Name+"Tx"] = bytesOut
 		s.pksCounterMap[networkInterface.Name+"Tx"] = packetsOut
 		s.byteCounterMap[networkInterface.Name+"Rx"] = bytesIn
 		s.pksCounterMap[networkInterface.Name+"Rx"] = packetsIn
 
+		if oldValueBpTx == 0 || oldValuePkTx == 0 || oldValuePkRx == 0 || oldValueBpRx == 0 {
+			continue
+		}
+
 		netMetrics = append(netMetrics, &monitoring.NetworkMetrics{
-			InterfaceName: networkInterface.Name,
-
-			BytesSentRate:   valueBpTx,
-			PacketsSentRate: valuePkTx,
-
-			BytesReceivedRate:   valueBpRx,
-			PacketsReceivedRate: valuePkRx,
-
-			BytesSent:   bytesOut,
-			PacketsSent: packetsOut,
-
-			BytesReceived:   bytesIn,
-			PacketsReceived: packetsIn,
+			InterfaceName:       networkInterface.Name,
+			BytesSentRate:       (bytesOut - oldValueBpTx) / uint64(rate.Seconds()),
+			PacketsSentRate:     (packetsOut - oldValuePkTx) / uint64(rate.Seconds()),
+			BytesReceivedRate:   (bytesIn - oldValueBpRx) / uint64(rate.Seconds()),
+			PacketsReceivedRate: (packetsIn - oldValuePkRx) / uint64(rate.Seconds()),
+			BytesSent:           bytesOut,
+			PacketsSent:         packetsOut,
+			BytesReceived:       bytesIn,
+			PacketsReceived:     packetsIn,
 		})
 	}
 
-	consumer <- netMetrics
-
-	slog.Info("crawled network info", "time", time.Since(start))
-	return nil
-}
-
-func nvmeController(device string) string {
-	// nvme0n1 → nvme0
-	if strings.HasPrefix(device, "nvme") {
-		if idx := strings.Index(device, "n"); idx != -1 {
-			return device[:idx]
-		}
-	}
-	return device
+	return netMetrics, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net"
 
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
@@ -64,12 +63,13 @@ func (a AgentLoginController) Handle(ctx fiber.Ctx) error {
 		}
 	}
 
-	ip := net.ParseIP(ctx.IP())
+	/*
+		ip := net.ParseIP(ctx.IP())
 
-	if agent.RegisteredIP.Equal(ip) {
-		return fiber.ErrUnauthorized
-	}
-
+		if !agent.RegisteredIP.Equal(ip) {
+			return fiber.ErrUnauthorized
+		}
+	*/
 	tokens, err := a.tokenService.CreateToken(agent.ID, &agent.Holder, models.TokenTypeAgent)
 	if err != nil {
 		slog.Error("failed to create token", "error", err)

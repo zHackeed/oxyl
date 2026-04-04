@@ -1,6 +1,8 @@
 package requests
 
-import "zhacked.me/oxyl/shared/pkg/models"
+import (
+	"zhacked.me/oxyl/shared/pkg/models"
+)
 
 type AgentIdUri struct {
 	AgentId string `uri:"id" validate:"required,alphanum"`
@@ -23,4 +25,9 @@ type AgentLoginRequest struct {
 
 type AuthenticationShutdownRequest struct {
 	AgentId string `json:"agent_id" validate:"required,alphanum"`
+}
+
+type AgentMetricsRequest struct {
+	AgentId  string `uri:"id" validate:"required,alphanum"`
+	Interval string `uri:"interval" validate:"required,oneof=1m 5m 15m 1h 1d"` // todo: change to enum
 }

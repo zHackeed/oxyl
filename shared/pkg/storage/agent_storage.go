@@ -127,16 +127,17 @@ func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Ag
 	return &agent, nil
 }
 
+/*
 // This is the shittiest way to do this.
 func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
 	sql := `
-        SELECT 
-            ag.id, ag.holder, ag.display_name, ag.registered_ip, 
-            ag.status, ag.system_os, ag.cpu_model, ag.total_memory, 
+        SELECT
+            ag.id, ag.holder, ag.display_name, ag.registered_ip,
+            ag.status, ag.system_os, ag.cpu_model, ag.total_memory,
             ag.total_disk, ag.enrollment_token, ag.last_handshake, ag.created_at,
             ap.mount_point, ap.total_size, ap.is_raid, ap.raid_level
         FROM agents ag
-        LEFT JOIN agent_partition_scheme ap 
+        LEFT JOIN agent_partition_scheme ap
             ON ag.id = ap.agent AND ag.status != 'ENROLLING'
         ORDER BY ag.id
     `
@@ -209,8 +210,8 @@ func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
 	}
 
 	return agents, nil
-
 }
+*/
 
 func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string) ([]*models.Agent, error) {
 	sql := `
@@ -283,6 +284,19 @@ func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string)
 	}
 
 	return agents, nil
+}
+
+func (a *AgentStorage) GetHolderOfAgent(ctx context.Context, agentId string) (*string, error) {
+	sql := `SELECT holder FROM  agents WHERE id = $1`
+	row := a.conn.Pool().QueryRow(ctx, sql, agentId)
+
+	holder := new(string)
+
+	if err := row.Scan(holder); err != nil {
+		return nil, fmt.Errorf("unable to get agent holder: %w", err)
+	}
+
+	return holder, nil
 }
 
 func (a *AgentStorage) GetAgentState(ctx context.Context, agentID string) (models.AgentStatus, error) {

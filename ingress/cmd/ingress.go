@@ -58,7 +58,7 @@ func startNexus(cmd *cobra.Command, _ []string) {
 		timescale.Close()
 	}()
 
-	companyStorage, agentStorage, tokenStorage := createStorage(timescale, redis)
+	companyStorage, agentStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
 	agentService, tokenService, err := createServices(redis, companyStorage, agentStorage, tokenStorage)
 
 	if err != nil {
@@ -76,7 +76,7 @@ func startNexus(cmd *cobra.Command, _ []string) {
 	defer agentEnrollmentInterceptor.Close()
 
 	enrollmentService := serviceV1.NewEnrollmentService(redis, agentService, tokenService)
-	metricsConsumerService := serviceV1.NewMetricsConsumerService()
+	metricsConsumerService := serviceV1.NewMetricsConsumerService(monitoringStorage)
 
 	lis, err := net.Listen("tcp", ":19988")
 	if err != nil {
@@ -124,11 +124,12 @@ func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *dat
 }
 
 func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (
-	*storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage,
+	*storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage, *storage.MonitoringStorage,
 ) {
 	return storage.NewCompanyStorage(timescale),
 		storage.NewAgentStorage(timescale),
-		storage.NewTokenStorage(redis)
+		storage.NewTokenStorage(redis),
+		storage.NewMonitoringStorage(timescale)
 }
 
 func createServices(messenger *datasource.RedisConnection, companyStorage *storage.CompanyStorage, agentStorage *storage.AgentStorage, tokenStorage *storage.TokenStorage) (

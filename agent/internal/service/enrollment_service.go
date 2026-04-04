@@ -46,6 +46,7 @@ func (s *EnrollmentService) Start(ctx context.Context) error {
 		}
 
 		s.enrollmentToken = new(string(data))
+		slog.Info("device is enrolled, skipping enrollment actions")
 		return nil
 	}
 

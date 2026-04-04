@@ -81,12 +81,12 @@ func (s *AuthenticationService) StartTicking(ctx context.Context) {
 	}
 
 	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
+				ticker.Stop() // Stop the ticker when context dies lmao
 				return
 			case <-ticker.C:
 				if time.Now().After(s.refreshToken.expiration.Add(-time.Minute)) {
@@ -156,13 +156,15 @@ func (s *AuthenticationService) RefreshToken() error {
 
 	s.token = &activeToken{
 		Token:      response.AccessToken.Token,
-		expiration: response.RefreshToken.ExpiresAt,
+		expiration: response.AccessToken.ExpiresAt,
 	}
 
 	s.refreshToken = &activeToken{
 		Token:      response.RefreshToken.Token,
 		expiration: response.RefreshToken.ExpiresAt,
 	}
+
+	slog.Info("identity refreshed", slog.String("identifier", s.identifier), slog.String("time until refresh", s.token.expiration.Sub(time.Now()).String()))
 
 	return nil
 }
@@ -210,13 +212,15 @@ func (s *AuthenticationService) CreateAuthRequest() error {
 
 	s.token = &activeToken{
 		Token:      response.AccessToken.Token,
-		expiration: response.RefreshToken.ExpiresAt,
+		expiration: response.AccessToken.ExpiresAt,
 	}
 
 	s.refreshToken = &activeToken{
 		Token:      response.RefreshToken.Token,
 		expiration: response.RefreshToken.ExpiresAt,
 	}
+
+	slog.Info("authentication request successful", slog.String("identifier", s.identifier), slog.String("time until refresh", s.token.expiration.Sub(time.Now()).String()))
 
 	return nil
 }
@@ -265,8 +269,6 @@ func (s *AuthenticationService) GetRequestMetadata(_ context.Context, _ ...strin
 	if s.enrollmentToken != nil {
 		headers["ag_enrollment"] = *s.enrollmentToken
 	}
-
-	slog.Info("headers", slog.Any("headers", headers))
 
 	return headers, nil
 }

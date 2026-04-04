@@ -142,7 +142,8 @@ CREATE TABLE IF NOT EXISTS agent_general_metrics(
     timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     agent TEXT NOT NULL,
     cpu_usage float NOT NULL,
-    memory_usage float NOT NULL
+    memory_usage float NOT NULL,
+    uptime bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_disk_metrics(
@@ -157,16 +158,30 @@ CREATE TABLE IF NOT EXISTS agent_physical_disk_metrics(
     agent TEXT NOT NULL,
     disk_path TEXT NOT NULL,
 
-    health_left bigint NOT NULL, /* smart info health left percentage */
-    media_errors int NOT NULL /* smart info media errors count */
+    health_left bigint, /* smart info health left percentage */
+    media_errors_1 int,  /* smart info media errors count */
+    media_errors_2 int, /* smart info media errors count */
+
+    error_rate bigint,
+    pending_sectors bigint
 );
 
 CREATE TABLE IF NOT EXISTS agent_network_metrics(
     timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     agent TEXT NOT NULL,
-    interface TEXT NOT NULL,
+    interface_name TEXT NOT NULL,
+
     rx_bytes bigint NOT NULL,
-    tx_bytes bigint NOT NULL
+    tx_bytes bigint NOT NULL,
+
+    rx_packets bigint NOT NULL,
+    tx_packets bigint NOT NULL,
+
+    rx_rate bigint NOT NULL,
+    tx_rate bigint NOT NULL,
+
+    rx_packet_rate bigint NOT NULL,
+    tx_packet_rate bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_notification_logs(

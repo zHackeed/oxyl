@@ -113,6 +113,39 @@ func (s *SystemInfoService) CaptureData() error {
 
 	s.totalMemory = *memInfo.MemTotal
 
+	blockDevices, err := s.blockInfo.SysBlockDevices()
+	if err != nil {
+		return fmt.Errorf("unable to get block devices info: %v", err)
+	}
+
+	for _, blockDevice := range blockDevices {
+		size, err := s.blockInfo.SysBlockDeviceSize(blockDevice)
+		if err != nil {
+			continue
+		}
+
+		if !strings.HasPrefix(blockDevice, "nvme") {
+			nameRune := []rune(blockDevice)
+
+			typeValue := string(nameRune[:2])
+			if typeValue != "sd" && typeValue != "fd" && typeValue != "hd" {
+				slog.Warn("invalid partition type", slog.String("type", typeValue))
+				continue
+			}
+		}
+
+		if diskInfo, err := models.NewDiskInfo(nil, blockDevice, size); err == nil {
+			s.DiskPartitionMap[blockDevice] = diskInfo
+		}
+	}
+
+	partitions, err := s.consumePartitions()
+	if err != nil {
+		return fmt.Errorf("unable to get partitions info: %v", err)
+	}
+
+	s.PartitionMap = partitions
+
 	mountPoints, err := s.sysStats.GetMounts()
 	if err != nil {
 		return fmt.Errorf("unable to get mount points info: %v", err)
@@ -125,45 +158,15 @@ func (s *SystemInfoService) CaptureData() error {
 			continue
 		}
 
-		s.MountPointMap[mountPointInfo.Source] = mountPointInfo
-	}
+		// we need to strip this and check if we are on a string, we do not really care if it fails honestly.
+		partitionName := strings.TrimPrefix(mountPointInfo.Source, "/dev/")
 
-	blockDevices, err := s.blockInfo.SysBlockDevices()
-	if err != nil {
-		return fmt.Errorf("unable to get block devices info: %v", err)
-	}
-
-	for _, blockDevice := range blockDevices {
-		size, err := s.blockInfo.SysBlockDeviceSize(blockDevice)
-
-		if err != nil {
-			slog.Error("failed to stat size of disk", slog.String("device", blockDevice))
+		if _, ok := s.PartitionMap[partitionName]; !ok {
 			continue
 		}
 
-		if !strings.HasPrefix(blockDevice, "nvme") {
-			nameRune := []rune(blockDevice)
-
-			typeValue := string(nameRune[:2])
-			if typeValue != "sd" && typeValue != "fd" && typeValue != "hd" {
-				slog.Info("invalid partition type", slog.String("type", typeValue))
-				continue
-			}
-		}
-
-		if diskInfo, err := models.NewDiskInfo(nil, blockDevice, size); err == nil {
-			slog.Info("block device name", slog.String("device", blockDevice))
-			s.DiskPartitionMap[blockDevice] = diskInfo
-		}
-
+		s.MountPointMap[mountPointInfo.MountPoint] = mountPointInfo
 	}
-
-	partitions, err := s.consumePartitions()
-	if err != nil {
-		return fmt.Errorf("unable to get partitions info: %v", err)
-	}
-
-	s.PartitionMap = partitions
 
 	raidDevices, err := s.sysStats.MDStat()
 	if err != nil {
@@ -205,7 +208,7 @@ func (s *SystemInfoService) consumePartitions() (map[string]*models.DiskInfo, er
 
 		fields := strings.Fields(line)
 		if len(fields) != 4 {
-			slog.Info("invalid partition line", slog.String("line", line))
+			slog.Error("invalid partition line", slog.String("line", line))
 			continue
 		}
 
@@ -231,8 +234,6 @@ func (s *SystemInfoService) consumePartitions() (map[string]*models.DiskInfo, er
 			continue
 		}
 
-		slog.Info("partition size", slog.String("disk", *diskName), slog.String("partition", partitionName), slog.Uint64("size", diskInfo.TotalSize), slog.String("gb", strconv.FormatUint(diskInfo.TotalSize/1024/1024/1024, 10)))
-
 		partitionMap[partitionName] = diskInfo
 	}
 
@@ -254,14 +255,11 @@ func (s *SystemInfoService) obtainDiskFromPartition(partition string) (*string, 
 
 	typeValue := string(runes[:2])
 	if typeValue != "sd" && typeValue != "fd" && typeValue != "hd" {
-		slog.Info("invalid partition type", slog.String("type", typeValue))
+		slog.Warn("invalid partition type", slog.String("type", typeValue))
 		return nil, fmt.Errorf("invalid partition type: %s", partition)
 	}
 
 	indexValue := string(runes[2])
-	partitionValue := string(runes[3:])
-
-	slog.Info("obtained disk from partition", slog.String("type", typeValue), slog.String("index", indexValue), slog.String("partition", partitionValue))
 
 	return new(strings.Join([]string{typeValue, indexValue}, "")), nil
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/utils"
 )
@@ -16,11 +17,17 @@ func NewLoggingInterceptor() *LoggingInterceptor {
 }
 
 func (l *LoggingInterceptor) Intercept(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		slog.Error("unable to get peer from context")
+	}
+
 	agent, found := utils.GetValueFromContext[string](ctx, models.ContextAgent)
 
 	args := []any{
 		slog.String("method", info.FullMethod),
-		slog.Any("data", req),
+		slog.String("peer", p.Addr.String()),
+		//slog.Any("data", req),
 	}
 
 	if found {

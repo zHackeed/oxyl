@@ -64,10 +64,10 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		timescale.Close()
 	}()
 
-	userStorage, companyStorage, agentStorage, tokenStorage := createStorage(timescale, redis)
+	userStorage, companyStorage, agentStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
 
-	userService, companyService, agentService, tokenService, err := createServices(userStorage,
-		companyStorage, agentStorage, tokenStorage, redis)
+	userService, companyService, agentService, tokenService, metricsService, err := createServices(userStorage,
+		companyStorage, agentStorage, tokenStorage, monitoringStorage, redis)
 
 	if err != nil {
 		slog.Error("unable to create service", "error", err)
@@ -143,6 +143,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		agent.NewAgentInfoController(agentService),
 		agent.NewDeleteAgentController(agentService),
 		agent.NewToggleMaintenanceController(agentService),
+		agent.NewMetricsController(metricsService),
 	}
 
 	registerRoutes(apiGroupRoute, protectedRoutes...)
@@ -180,12 +181,13 @@ func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *dat
 }
 
 func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (
-	*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage,
+	*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage, *storage.MonitoringStorage,
 ) {
 	return storage.NewUserStorage(timescale),
 		storage.NewCompanyStorage(timescale),
 		storage.NewAgentStorage(timescale),
-		storage.NewTokenStorage(redis)
+		storage.NewTokenStorage(redis),
+		storage.NewMonitoringStorage(timescale)
 }
 
 func createServices(
@@ -193,18 +195,20 @@ func createServices(
 	companyStorage *storage.CompanyStorage,
 	agentStorage *storage.AgentStorage,
 	tokenStorage *storage.TokenStorage,
+	monitoringStorage *storage.MonitoringStorage,
 	redis *datasource.RedisConnection,
-) (*service.UserService, *service.CompanyService, *service.AgentService, *service.TokenService, error) {
+) (*service.UserService, *service.CompanyService, *service.AgentService, *service.TokenService, *service.MetricsService, error) {
 	tokenService, err := service.NewTokenService(tokenStorage)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	userService := service.NewUserService(userStorage)
 	companyService := service.NewCompanyService(redis, companyStorage, userStorage)
 	agentService := service.NewAgentService(redis, companyStorage, agentStorage)
+	metricsService := service.NewAgentMetricsService(companyStorage, agentStorage, monitoringStorage)
 
-	return userService, companyService, agentService, tokenService, nil
+	return userService, companyService, agentService, tokenService, metricsService, nil
 }
 
 func registerRoutes(router fiber.Router, registrable ...apiModel.Registrable) {
