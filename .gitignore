@@ -50,3 +50,4 @@ frontend/*.key
 frontend/*.mobileprovision
 frontend/*.orig.*
 frontend/.metro-health-check*
+frontend/.tamagui/
