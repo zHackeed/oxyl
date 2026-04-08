@@ -29,3 +29,24 @@ shared/pkg/version/.branch_id
 # We would kindly want to not send anything on these folders, as it would mean sending local data that we do not want to have on the repo
 deployment/**/data.d/*
 deployment/**/conf.d/*
+
+frontend/node_modules/*
+
+.vscode
+frontend/.expo
+frontend/bun.lock
+frontend/bun.lockb
+frontend/package-lock.json
+frontend/ios
+frontend/android
+frontend/expo-env.d.ts
+frontend/.expo/
+frontend/dist/
+frontend/npm-debug.*
+frontend/*.jks
+frontend/*.p8
+frontend/*.p12
+frontend/*.key
+frontend/*.mobileprovision
+frontend/*.orig.*
+frontend/.metro-health-check*

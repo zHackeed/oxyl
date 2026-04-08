@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "oxyl",
+    "slug": "oxyl-frontend",
+    "version": "1.0.0",
+    "scheme": "oxyl",
+    "platforms": [
+      "ios"
+    ],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/logo-notext.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111111"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-notext.svg",
+        "backgroundColor": "#111111"
+      }
+    }
+  }
+}
