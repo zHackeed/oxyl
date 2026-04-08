@@ -2,10 +2,10 @@ package user
 
 import (
 	"log/slog"
-	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -24,7 +24,7 @@ func (r *RefreshController) GetPath() string {
 }
 
 func (r *RefreshController) RequestRequirements() *apiModel.RequestRequirements {
-	return nil
+	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.RefreshTokenRequest{})
 }
 
 func NewRefreshController(tokenService *service.TokenService) *RefreshController {
@@ -34,19 +34,12 @@ func NewRefreshController(tokenService *service.TokenService) *RefreshController
 }
 
 func (r *RefreshController) Handle(ctx fiber.Ctx) error {
-	token := ctx.Get("Authorization")
-	if token == "" {
-		return fiber.ErrUnauthorized
+	request, ok := ctx.Locals(r.RequestRequirements().GetValidationType()).(*requests.RefreshTokenRequest)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	// authorization: Bearer XXX....
-	if !strings.HasPrefix(token, "Bearer ") {
-		return fiber.ErrUnauthorized
-	}
-
-	token = token[len("Bearer "):] // Strip "Bearer "
-
-	tokenPair, err := r.tokenService.RefreshToken(ctx, token)
+	tokenPair, err := r.tokenService.RefreshToken(ctx, request.RefreshToken)
 	if err != nil {
 		slog.Error("unable to refresh token", "error", err)
 		return fiber.ErrUnauthorized

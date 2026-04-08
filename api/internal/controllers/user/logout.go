@@ -1,10 +1,9 @@
 package user
 
 import (
-	"strings"
-
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
+	"zhacked.me/oxyl/api/internal/models/requests"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
 
@@ -29,23 +28,16 @@ func (l LogoutController) GetPath() string {
 }
 
 func (l LogoutController) RequestRequirements() *apiModel.RequestRequirements {
-	return nil
+	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.LogoutRequest{})
 }
 
 func (l LogoutController) Handle(ctx fiber.Ctx) error {
-	token := ctx.Get("Authorization")
-	if token == "" {
-		return fiber.ErrUnauthorized
+	request, ok := ctx.Locals(l.RequestRequirements().GetValidationType()).(*requests.LogoutRequest)
+	if !ok {
+		return fiber.ErrInternalServerError
 	}
 
-	// authorization: Bearer XXX....
-	if !strings.HasPrefix(token, "Bearer ") {
-		return fiber.ErrUnauthorized
-	}
-
-	token = token[len("Bearer "):] // Strip "Bearer "
-
-	if err := l.tokenService.RevokeToken(ctx, token); err != nil {
+	if err := l.tokenService.RevokeToken(ctx, request.RefreshToken); err != nil {
 		return fiber.ErrInternalServerError
 	}
 
