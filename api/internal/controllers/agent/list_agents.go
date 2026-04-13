@@ -29,7 +29,7 @@ func (l *ListAgentsController) GetMethod() apiModel.HttpMethod {
 }
 
 func (l *ListAgentsController) GetPath() string {
-	return "/company/:company_id/agents"
+	return "/company/:id/agents"
 }
 
 func (l *ListAgentsController) RequestRequirements() *apiModel.RequestRequirements {

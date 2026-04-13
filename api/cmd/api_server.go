@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/healthcheck"
-	"github.com/gofiber/fiber/v3/middleware/limiter"
 	fiberRecover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/spf13/cobra"
@@ -90,22 +89,23 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	))
 
 	httpServer.Use(requestid.New())
+	httpServer.Use(middlewares.NewLoggingMiddleWare().Handle)
 	httpServer.Use(healthcheck.LivenessEndpoint, healthcheck.New())
-
-	// global rate limit - with sliding window
-	httpServer.Use(limiter.New(
-		limiter.Config{
-			Next: func(c fiber.Ctx) bool {
-				return c.IP() == "127.0.0.1" // do not apply rate limit to localhost
-			},
-			Max:        20,
-			Expiration: 30 * time.Second,
-			KeyGenerator: func(c fiber.Ctx) string {
-				return c.Get("x-forwarded-for")
-			},
-			LimiterMiddleware: limiter.SlidingWindow{},
-		}),
-	)
+	/*
+		httpServer.Use(limiter.New(
+			limiter.Config{
+				Next: func(c fiber.Ctx) bool {
+					return c.IP() == "127.0.0.1" // do not apply rate limit to localhost
+				},
+				Max:        20,
+				Expiration: 30 * time.Second,
+				KeyGenerator: func(c fiber.Ctx) string {
+					return c.Get("x-forwarded-for")
+				},
+				LimiterMiddleware: limiter.SlidingWindow{},
+			}),
+		)
+	*/
 
 	unprotectedRoutes := []apiModel.Registrable{
 		// -------------- user routes
@@ -128,11 +128,16 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 	apiGroupRoute.Use(authMiddleware.Handle)
 
 	protectedRoutes := []apiModel.Registrable{
+		// -------------- user protected routes
+		user.NewInfoController(userService),
+
 		// -------------- company routes
 		company.NewCreateCompanyController(companyService),
 		company.NewListCompaniesController(companyService),
 		company.NewDeleteCompanyController(companyService),
+		company.NewSelfPermissionController(companyService),
 		company.NewAddMemberController(companyService),
+		company.NewListMemberController(companyService),
 		company.NewRemoveMemberController(companyService),
 		company.NewThresholdsController(companyService),
 		company.NewModifyThresholdController(companyService),

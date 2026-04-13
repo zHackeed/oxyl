@@ -14,6 +14,8 @@ import (
 	"zhacked.me/oxyl/shared/pkg/variables"
 )
 
+// TODO: might think of caching company user lookups?
+
 type CompanyService struct {
 	messenger      *datasource.RedisConnection
 	userStorage    *storage.UserStorage
@@ -78,6 +80,20 @@ func (c *CompanyService) GetCompanies(ctx context.Context) ([]*models.Company, e
 	return c.companyStorage.GetCompaniesOfUser(ctx, userId)
 }
 
+func (c *CompanyService) GetMember(ctx context.Context, companyId string) (*models.CompanyMember, error) {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return nil, models.ErrPermissionDenied
+	}
+
+	member, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)
+	if err != nil {
+		return nil, err
+	}
+
+	return member, nil
+}
+
 func (c *CompanyService) AddUserToCompany(ctx context.Context, companyId, userEmail string, permission int) error {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
@@ -116,6 +132,33 @@ func (c *CompanyService) AddUserToCompany(ctx context.Context, companyId, userEm
 	}
 
 	return nil
+}
+
+func (c *CompanyService) GetMembers(ctx context.Context, companyId string) ([]*models.CompanyMemberComposite, error) {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return nil, models.ErrPermissionDenied
+	}
+	membership, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)
+	if err != nil {
+		if errors.Is(err, storage.ErrMemberNotFound) {
+			return nil, models.ErrPermissionDenied
+		}
+
+		return nil, err
+	}
+
+	allowed := models.HasPermission(membership.Permission, models.CompanyPermissionManageMembers)
+	if !allowed {
+		return nil, models.ErrPermissionDenied
+	}
+
+	members, err := c.companyStorage.GetMembersOfCompany(ctx, companyId)
+	if err != nil {
+		return nil, err // explode
+	}
+
+	return members, nil
 }
 
 func (c *CompanyService) RemoveUserFromCompany(ctx context.Context, companyId, targetId string) error {

@@ -37,6 +37,7 @@ func (a *AuthMiddleware) RequestRequirements() *apiModel.RequestRequirements {
 func (a *AuthMiddleware) Handle(ctx fiber.Ctx) error {
 	token := ctx.Get("Authorization")
 	if token == "" {
+		slog.Info("token is not sent")
 		return fiber.ErrUnauthorized
 	}
 

@@ -22,7 +22,7 @@ func (l *LoggingInterceptor) Intercept(ctx context.Context, req interface{}, inf
 		slog.Error("unable to get peer from context")
 	}
 
-	agent, found := utils.GetValueFromContext[string](ctx, models.ContextAgent)
+	agent, found := utils.GetValueFromContext[string](ctx, models.ContextKeyAgent)
 
 	args := []any{
 		slog.String("method", info.FullMethod),

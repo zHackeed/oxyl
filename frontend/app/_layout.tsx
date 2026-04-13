@@ -1,58 +1,71 @@
-import {
-  useFonts,
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import tamaguiConfig from '@/components/ui/tamagui.config';
 import { SplashScreen, Stack } from 'expo-router';
-import { TamaguiProvider } from '@tamagui/core';
-import tamaguiConfig from '@/tamagui.config';
-import { useEffect, useState } from 'react';
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
-import { AuthStatus, useAuthStore } from '@/store/auth/useAuthStore';
+import { useAuthFacade } from '@/store/auth/useAuthFacade';
+import { AuthStatus } from '@/store/auth/useAuthStore';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { TamaguiProvider, Theme } from '@tamagui/core';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 SplashScreen.preventAutoHideAsync();
+SystemUI.setBackgroundColorAsync('black'); // So for whatever reason, it is ignoring the background field on my app.json. This fixes it and makes it bearable.
+
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    Inter: Inter_400Regular,
-    InterSemiBold: Inter_600SemiBold,
-    InterBold: Inter_700Bold,
-  });
-
-  const [isReady, setIsReady] = useState(false);
+  const { status } = useAuthFacade();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (fontsLoaded) {
-      useAuthStore
-        .getState()
-        .hydrate()
-        .then(() => {
-          SplashScreen.hideAsync();
-          setIsReady(true);
-        });
+    if (status !== AuthStatus.LOADING) {
+      SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [status]);
 
-  if (!isReady) return null;
-
-  const status = useAuthStore.getState().status;
+  if (status === AuthStatus.LOADING) {
+    return null;
+  }
 
   return (
-    <SafeAreaProvider style={{ flex: 1 }}>
-      <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-        <ThemeProvider value={DarkTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Protected guard={status !== AuthStatus.AUTHENTICATED}>
-              <Stack.Screen name="(auth)" />
-            </Stack.Protected>
-            <Stack.Protected guard={status === AuthStatus.AUTHENTICATED}>
-              <Stack.Screen name="(company)" />
-            </Stack.Protected>
-          </Stack>
-        </ThemeProvider>
-      </TamaguiProvider>
-    </SafeAreaProvider>
+    <TamaguiProvider config={tamaguiConfig} defaultTheme="dark" insets={insets}>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics} style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <Theme name="dark">
+            <KeyboardProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}>
+                <Stack.Protected guard={status === AuthStatus.UNAUTHENTICATED}>
+                  <Stack.Screen name="(auth)" />
+                </Stack.Protected>
+                <Stack.Protected guard={status === AuthStatus.AUTHENTICATED}>
+                  <Stack.Screen name="(selector)" />
+                  <Stack.Screen name="(company)" />
+                </Stack.Protected>
+
+                {/* modals */}
+                <Stack.Screen
+                  name="(modals)"
+                  options={{
+                    presentation: 'formSheet',
+                    sheetCornerRadius: 24,
+                    sheetAllowedDetents: [0.8],
+                    sheetGrabberVisible: false,
+                    sheetShouldOverflowTopInset: true,
+                    contentStyle: {
+                      height: '100%', // there is a bug with formSheet when is nested. It freaks out and doesn't render properly.
+                    },
+                  }}
+                />
+              </Stack>
+            </KeyboardProvider>
+          </Theme>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </TamaguiProvider>
   );
 }

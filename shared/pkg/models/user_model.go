@@ -27,6 +27,12 @@ type User struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type UserResumed struct {
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Email   string `json:"email"`
+}
+
 func NewUser(name, surname, email, password string) (*User, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name is required")

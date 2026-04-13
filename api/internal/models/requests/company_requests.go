@@ -20,7 +20,7 @@ type RemoveMemberRequest struct {
 }
 
 type ModifyThresholdRequest struct {
-	CompanyId        string                  `uri:"company_id" validate:"required,alphanum"`
+	CompanyId        string                  `uri:"id" validate:"required,alphanum"`
 	NotificationType models.NotificationType `json:"notification_type" validate:"required,oneof=COMPANY_SETTING_UPDATE COMPANY_MEMBER_UPDATE AGENT_STATUS_UPDATE AGENT_CPU_USAGE_THRESHOLD AGENT_MEMORY_USAGE_THRESHOLD AGENT_DISK_USAGE_THRESHOLD AGENT_DISK_HEALTH_THRESHOLD AGENT_NETWORK_USAGE_THRESHOLD"`
 	Threshold        int                     `json:"threshold" validate:"required,numeric"`
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
 	"zhacked.me/oxyl/api/internal/models/requests"
+	"zhacked.me/oxyl/api/internal/models/responses"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 )
@@ -32,7 +33,7 @@ func (t *ThresholdsController) GetPath() string {
 }
 
 func (t *ThresholdsController) RequestRequirements() *apiModel.RequestRequirements {
-	return apiModel.NewRequestRequirements(apiModel.QueryData, requests.CompanyIdUri{})
+	return apiModel.NewRequestRequirements(apiModel.URIData, requests.CompanyIdUri{})
 }
 
 func (t *ThresholdsController) Handle(ctx fiber.Ctx) error {
@@ -51,5 +52,14 @@ func (t *ThresholdsController) Handle(ctx fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(thresholds)
+	valueWrapped := make([]responses.CompanyThresholdValueWrapper, len(thresholds))
+
+	for key, value := range thresholds {
+		valueWrapped = append(valueWrapped, responses.CompanyThresholdValueWrapper{
+			ThresholdIdentifier: key,
+			Value:               value,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(valueWrapped)
 }

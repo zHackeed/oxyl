@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS company_members(
     user_id varchar(26) NOT NULL,
     company_id varchar(26) NOT NULL,
 
-    permission_bitwise int NOT NULL DEFAULT 0,  /* todo: Permission bits, will be defined better upon handling */
+    permission_bitwise int NOT NULL DEFAULT 0,
+    created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (user_id, company_id), /* A user can be a member of multiple companies and a company can have multiple users, many to many relationship. */
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,

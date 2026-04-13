@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	ErrAgentNotFound = errors.New("agent not found")
-	ErrNoAgents      = errors.New("no agents found for this company")
+	ErrAgentNotFound    = errors.New("agent not found")
+	ErrNoAgents         = errors.New("no agents found for this company")
+	ErrAgentNotEnrolled = errors.New("agent not enrolled")
 )
 
 type AgentStorage struct {
@@ -41,15 +42,6 @@ func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) err
 		return fmt.Errorf("unable to create agent: %w", err)
 	}
 
-	if len(agent.Partitions) > 0 {
-		for _, partition := range agent.Partitions {
-			sql := `INSERT INTO agent_partition_scheme (agent, mount_point, total_size, is_raid, raid_level) VALUES ($1, $2, $3, $4, $5)`
-			if _, err := tx.Exec(ctx, sql, agent.ID, partition.MountPoint, partition.TotalSize, partition.Raid, partition.RaidLevel); err != nil {
-				return fmt.Errorf("unable to create agent partition scheme: %w", err)
-			}
-		}
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("unable to commit transaction: %w", err)
 	}
@@ -57,174 +49,102 @@ func (a *AgentStorage) CreateAgent(ctx context.Context, agent *models.Agent) err
 	return nil
 }
 
-func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
-	sql := `SELECT id, holder, display_name, registered_ip, status, system_os, cpu_model, total_memory, total_disk, enrollment_token, last_handshake, created_at FROM agents WHERE id = $1`
+func (a *AgentStorage) GetAgentWithMetadata(ctx context.Context, agentID string) (*models.Agent, *models.AgentMetadata, error) {
+	sql := `
+        SELECT id, holder, display_name, registered_ip, status, last_handshake, created_at,
+               system_os, cpu_model, total_memory, total_disk, enrollment_token
+        FROM agents WHERE id = $1
+    `
 	row := a.conn.Pool().QueryRow(ctx, sql, agentID)
-	var agent models.Agent
 
-	// systemOs, cpuModel, totalMemory, totalDisk are nullable
+	var agent models.Agent
+	var lastHandshake sql2.NullTime
 	var systemOS, cpuModel, enrollmentToken sql2.NullString
 	var totalMemory, totalDisk sql2.NullInt64
-	var lastHandshake sql2.NullTime
 
 	if err := row.Scan(
-		&agent.ID,
-		&agent.Holder, &agent.DisplayName,
+		&agent.ID, &agent.Holder, &agent.DisplayName,
 		&agent.RegisteredIP, &agent.Status,
-		&systemOS, &cpuModel, &totalMemory, &totalDisk,
-		&enrollmentToken, &lastHandshake, &agent.CreatedAt,
+		&lastHandshake, &agent.CreatedAt,
+		&systemOS, &cpuModel, &totalMemory, &totalDisk, &enrollmentToken,
 	); err != nil {
-		return nil, fmt.Errorf("unable to get agent: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil, ErrAgentNotFound
+		}
+		return nil, nil, fmt.Errorf("unable to get agent: %w", err)
 	}
 
-	if agent.Status == models.AgentStatusEnrolling {
-		// We do not know the data of the server
-		return &agent, nil
-	}
-
-	agent.SystemOS = systemOS.String
-	agent.CPUModel = cpuModel.String
-	agent.TotalMemory = totalMemory.Int64
-	agent.TotalDisk = totalDisk.Int64
-
-	// the last connection might not have been ever done
 	if lastHandshake.Valid {
 		agent.LastHandshake = lastHandshake.Time
 	}
 
-	if enrollmentToken.Valid {
-		agent.EnrollmentToken = enrollmentToken.String
+	if !systemOS.Valid {
+		return &agent, nil, nil
 	}
 
-	sql = `SELECT mount_point, total_size, is_raid, raid_level FROM agent_partition_scheme WHERE agent = $1`
-	rows, err := a.conn.Pool().Query(ctx, sql, agentID)
+	rows, err := a.conn.Pool().Query(ctx,
+		`SELECT mount_point, total_size, is_raid, raid_level FROM agent_partition_scheme WHERE agent = $1`,
+		agentID,
+	)
 	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get agent partitions: %w", err)
+	}
+	defer rows.Close()
+
+	partitions := make([]*models.AgentPartition, 0)
+	for rows.Next() {
+		var p models.AgentPartition
+		if err := rows.Scan(&p.MountPoint, &p.TotalSize, &p.Raid, &p.RaidLevel); err != nil {
+			return nil, nil, fmt.Errorf("unable to scan partition: %w", err)
+		}
+		partitions = append(partitions, &p)
+	}
+
+	if rows.Err() != nil {
+		return nil, nil, fmt.Errorf("unable to get agent partitions: %w", rows.Err())
+	}
+
+	return &agent, &models.AgentMetadata{
+		SystemOS:        systemOS.String,
+		CPUModel:        cpuModel.String,
+		TotalMemory:     uint64(totalMemory.Int64),
+		TotalDisk:       uint64(totalDisk.Int64),
+		EnrollmentToken: enrollmentToken.String,
+		Partitions:      partitions,
+	}, nil
+}
+
+func (a *AgentStorage) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
+	sql := `SELECT id, holder, display_name, registered_ip, status, last_handshake, created_at FROM agents WHERE id = $1`
+	row := a.conn.Pool().QueryRow(ctx, sql, agentID)
+
+	var agent models.Agent
+	var lastHandshake sql2.NullTime
+
+	if err := row.Scan(
+		&agent.ID, &agent.Holder, &agent.DisplayName,
+		&agent.RegisteredIP, &agent.Status,
+		&lastHandshake, &agent.CreatedAt,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAgentNotFound
 		}
-		return nil, fmt.Errorf("unable to get agent partitions: %w", err)
+		return nil, fmt.Errorf("unable to get agent: %w", err)
 	}
 
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("unable to get agent partitions: %w", rows.Err())
-	}
-
-	agent.Partitions = make([]*models.AgentPartition, 0)
-
-	defer rows.Close()
-	for rows.Next() {
-		var partition models.AgentPartition
-		if err := rows.Scan(&partition.MountPoint, &partition.TotalSize, &partition.Raid, &partition.RaidLevel); err != nil {
-			return nil, fmt.Errorf("unable to get agent partitions: %w", err)
-		}
-		agent.Partitions = append(agent.Partitions, &partition)
-	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("unable to get agent partitions: %w", rows.Err())
+	if lastHandshake.Valid {
+		agent.LastHandshake = lastHandshake.Time
 	}
 
 	return &agent, nil
 }
 
-/*
-// This is the shittiest way to do this.
-func (a *AgentStorage) GetAgents(ctx context.Context) ([]*models.Agent, error) {
-	sql := `
-        SELECT
-            ag.id, ag.holder, ag.display_name, ag.registered_ip,
-            ag.status, ag.system_os, ag.cpu_model, ag.total_memory,
-            ag.total_disk, ag.enrollment_token, ag.last_handshake, ag.created_at,
-            ap.mount_point, ap.total_size, ap.is_raid, ap.raid_level
-        FROM agents ag
-        LEFT JOIN agent_partition_scheme ap
-            ON ag.id = ap.agent AND ag.status != 'ENROLLING'
-        ORDER BY ag.id
-    `
-
-	rows, err := a.conn.Pool().Query(ctx, sql)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get agents: %w", err)
-	}
-	defer rows.Close()
-
-	agentMap := make(map[string]*models.Agent)
-	agentOrder := make([]string, 0)
-
-	for rows.Next() {
-		var agentID string
-		var agent models.Agent
-
-		// Nullable values
-
-		var mountPoint sql2.NullString
-		var totalSize sql2.NullInt64
-		var isRaid *sql2.NullBool
-		var raidLevel *sql2.NullInt32
-		var enrollmentToken *sql2.NullString
-
-		if err := rows.Scan(
-			&agentID, &agent.Holder, &agent.DisplayName, &agent.RegisteredIP,
-			&agent.Status, &agent.SystemOS, &agent.CPUModel, &agent.TotalMemory,
-			&agent.TotalDisk, &enrollmentToken, &agent.LastHandshake, &agent.CreatedAt,
-			&mountPoint, &totalSize, &isRaid, &raidLevel,
-		); err != nil {
-			return nil, fmt.Errorf("unable to scan agent row: %w", err)
-		}
-
-		// If the agent is not in the map, add it and add it to the order. (Issues with the left join)
-		if _, exists := agentMap[agentID]; !exists {
-			agent.ID = agentID
-			agent.Partitions = make([]*models.AgentPartition, 0)
-			agentMap[agentID] = &agent
-			agentOrder = append(agentOrder, agentID)
-
-			if enrollmentToken.Valid {
-				agent.EnrollmentToken = enrollmentToken.String
-			}
-		}
-
-		// If the mount point is not null, add the partition to the agent active agent
-		if mountPoint.Valid {
-			mountPointData := &models.AgentPartition{
-				MountPoint: mountPoint.String,
-				TotalSize:  uint64(totalSize.Int64),
-				Raid:       isRaid.Bool,
-			}
-
-			if isRaid.Valid {
-				mountPointData.RaidLevel = int(raidLevel.Int32)
-			}
-
-			agentMap[agentID].Partitions = append(agentMap[agentID].Partitions, mountPointData)
-		}
-	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("unable to get agents: %w", rows.Err())
-	}
-
-	agents := make([]*models.Agent, 0, len(agentOrder))
-	for _, id := range agentOrder {
-		agents = append(agents, agentMap[id])
-	}
-
-	return agents, nil
-}
-*/
-
 func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string) ([]*models.Agent, error) {
 	sql := `
-        SELECT 
-            ag.id, ag.holder, ag.display_name, ag.registered_ip, 
-            ag.status, ag.system_os, ag.cpu_model, ag.total_memory, 
-            ag.total_disk, ag.last_handshake, ag.created_at,
-            ap.mount_point, ap.total_size, ap.is_raid, ap.raid_level
-        FROM agents ag
-        LEFT JOIN agent_partition_scheme ap 
-            ON ag.id = ap.agent AND ag.status != 'ENROLLING'
-        WHERE ag.holder = $1
-        ORDER BY ag.id
+        SELECT id, holder, display_name, registered_ip, status, last_handshake, created_at
+        FROM agents
+        WHERE holder = $1
+        ORDER BY id
     `
 
 	rows, err := a.conn.Pool().Query(ctx, sql, companyID)
@@ -234,58 +154,35 @@ func (a *AgentStorage) GetAgentsOfCompany(ctx context.Context, companyID string)
 		}
 		return nil, fmt.Errorf("unable to get agents of company: %w", err)
 	}
-
-	agentMap := make(map[string]*models.Agent)
-	agentOrder := make([]string, 0) // preserve order
 	defer rows.Close()
 
-	for rows.Next() {
-		var agentID string
-		var agent models.Agent
-		var mountPoint *string
+	agents := make([]*models.Agent, 0)
 
-		// Nullable values
-		var totalSize *uint64
-		var isRaid *bool
-		var raidLevel *int
+	for rows.Next() {
+		var agent models.Agent
+		var lastHandshake sql2.NullTime
 
 		if err := rows.Scan(
-			&agentID, &agent.Holder, &agent.DisplayName, &agent.RegisteredIP,
-			&agent.Status, &agent.SystemOS, &agent.CPUModel, &agent.TotalMemory,
-			&agent.TotalDisk, &agent.LastHandshake, &agent.CreatedAt,
-			&mountPoint, &totalSize, &isRaid, &raidLevel,
+			&agent.ID, &agent.Holder, &agent.DisplayName,
+			&agent.RegisteredIP, &agent.Status,
+			&lastHandshake, &agent.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("unable to scan agent row: %w", err)
 		}
 
-		if _, exists := agentMap[agentID]; !exists {
-			agent.ID = agentID
-			agent.Partitions = make([]*models.AgentPartition, 0)
-			agentMap[agentID] = &agent
-			agentOrder = append(agentOrder, agentID)
+		if lastHandshake.Valid {
+			agent.LastHandshake = lastHandshake.Time
 		}
-		if mountPoint != nil {
-			agentMap[agentID].Partitions = append(agentMap[agentID].Partitions, &models.AgentPartition{
-				MountPoint: *mountPoint,
-				TotalSize:  *totalSize,
-				Raid:       *isRaid,
-				RaidLevel:  *raidLevel,
-			})
-		}
+
+		agents = append(agents, &agent)
 	}
 
 	if rows.Err() != nil {
 		return nil, fmt.Errorf("unable to get agents of company: %w", rows.Err())
 	}
 
-	agents := make([]*models.Agent, 0, len(agentOrder))
-	for _, id := range agentOrder {
-		agents = append(agents, agentMap[id])
-	}
-
 	return agents, nil
 }
-
 func (a *AgentStorage) GetHolderOfAgent(ctx context.Context, agentId string) (*string, error) {
 	sql := `SELECT holder FROM  agents WHERE id = $1`
 	row := a.conn.Pool().QueryRow(ctx, sql, agentId)

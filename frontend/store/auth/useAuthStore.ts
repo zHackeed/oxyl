@@ -1,6 +1,6 @@
 import { AuthToken } from '@/lib/api/models/token';
-import { AuthService } from '@/lib/service/auth-service';
-import { TokenService } from '@/lib/service/token-service';
+import { AuthService } from '@/lib/service/auth';
+import { TokenService } from '@/lib/service/token';
 import { createWithEqualityFn } from 'zustand/traditional'
 
 export enum AuthStatus {
@@ -9,79 +9,96 @@ export enum AuthStatus {
   UNAUTHENTICATED = 'unauthenticated',
 }
 
-export interface AuthState {
+export interface AuthStatProps {
   token: AuthToken | null;
   refreshToken: AuthToken | null;
   status: AuthStatus;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  hydrate: () => Promise<boolean>;
+
+  signIn: (email: string, password: string) => Promise<boolean>;
+  signOut: () => void;
+  refreshTokens: (token: AuthToken, refreshToken: AuthToken) => Promise<void>;
 }
 
-export const useAuthStore = createWithEqualityFn<AuthState>((set) => ({
+const initialAuthState = {
   token: null,
   refreshToken: null,
   status: AuthStatus.LOADING,
-  signIn: async (email: string, password: string) => {
-    const result = await AuthService.login(email, password);
-    if (result) {
-      set({
-        token: result.access_token,
-        refreshToken: result.refresh_token,
-        status: AuthStatus.AUTHENTICATED,
-      });
-    }
-  },
-  signOut: async () => {
-    await AuthService.logout();
-    set({
-      token: null,
-      refreshToken: null,
-      status: AuthStatus.UNAUTHENTICATED,
-    });
-  },
-  hydrate: async () => {
-    try {
-      const accessToken = await TokenService.getAccessToken();
-      const refreshToken = await TokenService.getRefreshToken();
+};
 
-      if (accessToken && refreshToken) {
-        if (refreshToken.expires_at < new Date()) {
-          // refresh token is expired, we can't do anything
-          return true;
-        }
+const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
+  const initialState = initialAuthState;
 
-        // are the access token expired?
-        if (accessToken.expires_at < new Date()) {
-          // refresh the token
-          const result = await AuthService.refresh(refreshToken.token);
-          if (result) {
-            set({
-              token: result.access_token,
-              refreshToken: result.refresh_token,
-              status: AuthStatus.AUTHENTICATED,
-            });
-          }
+  const getAccessToken = async () => {
+    const token = await TokenService.getAccessToken();
+    return token;
+  };
 
-          return true;
-        }
-        set({
-          token: accessToken,
+  const getRefreshToken = async () => {
+    const token = await TokenService.getRefreshToken();
+    return token;
+  };
+
+  Promise
+    .all([getRefreshToken(), getAccessToken()])
+    .then(([refreshToken, token]) => {
+      if (refreshToken && token) {
+        set((state) => ({
+          ...state,
+          token: token,
           refreshToken: refreshToken,
           status: AuthStatus.AUTHENTICATED,
-        });
-        return true;
+        }));
       } else {
-        set({
+        set((state) => ({
+          ...state,
           status: AuthStatus.UNAUTHENTICATED,
-        });
-        return true;
+        }));
       }
-    } catch (error) {
-      console.error('Error hydrating auth state:', error);
+    }).catch((error) => {
+      console.error("Error initializing auth store", error);
+      set((state) => ({
+        ...state,
+        status: AuthStatus.UNAUTHENTICATED,
+      }));
+    });
+
+   
+  return {
+    ...initialState,
+    signIn: async (email: string, password: string) => {
+      const result = await AuthService.login(email, password); // to do, remove
+      if (result) {
+        set((state) => ({
+          ...state,
+          token: result.access_token,
+          refreshToken: result.refresh_token,
+          status: AuthStatus.AUTHENTICATED,
+        }));
+      }
+    
       return false;
-    }
-  },
-}));
+    },
 
+    refreshTokens: async (token, refreshToken) => {
+      await TokenService.setAccessToken(token);
+      await TokenService.setRefreshToken(refreshToken);
+      set((state) => ({
+        ...state,
+        token: token,
+        refreshToken: refreshToken,
+      }))
+    },
 
+    signOut: async () => {
+      await TokenService.clearTokens();
+      set((state) => ({
+        ...state,
+        token: null,
+        refreshToken: null,
+        status: AuthStatus.UNAUTHENTICATED,
+      }))
+    },
+  };
+})
+
+export default useAuthStore

@@ -54,13 +54,13 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredI
 		return nil, fmt.Errorf("unable to create agent: %w", err)
 	}
 
-	//todo: agent company limit count handling
+	//todo: agent company limit count handling?
 
 	if err := a.agentStorage.CreateAgent(ctx, model); err != nil {
 		return nil, fmt.Errorf("unable to save agent to storage: %w", err)
 	}
 
-	// notify the users watching the interface and resort the gui on their end.
+	// todo: notify the users watching the interface and resort the gui on their end.
 	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentCreation{
 		CompanyId:    holder,
 		AgentId:      model.ID,
@@ -76,39 +76,42 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredI
 
 func (a *AgentService) GetAgent(ctx context.Context, agentID string) (*models.Agent, error) {
 	userId, userFound := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
-	agentId, agentFound := utils.GetValueFromContext[string](ctx, models.ContextAgent)
+	requesterAgent, agentFound := utils.GetValueFromContext[string](ctx, models.ContextKeyAgent)
 	_, internalCall := utils.GetValueFromContext[bool](ctx, models.ContextInternal)
 
 	if !userFound && !agentFound && !internalCall {
 		return nil, models.ErrPermissionDenied
 	}
 
-	if agentID == "" {
-		return nil, errors.New("agent id is empty")
+	if len(agentID) != 26 {
+		return nil, errors.New("agent id malformed, maybe malformed")
 	}
 
-	if len(agentID) > 26 {
-		return nil, errors.New("agent id is too long, maybe malformed")
-	}
-
-	agent, err := a.agentStorage.GetAgent(ctx, agentID)
+	agent, metadata, err := a.agentStorage.GetAgentWithMetadata(ctx, agentID)
 	if err != nil {
 		return nil, err
 	}
 
-	if userFound {
+	switch {
+	case userFound:
 		membership, err := a.companyStorage.GetCompanyMembership(ctx, userId, agent.Holder)
 		if err != nil {
 			return nil, err
 		}
-
 		if !models.HasPermission(membership.Permission, models.CompanyPermissionView) {
+			return nil, models.ErrPermissionDenied
+		}
+	case agentFound:
+		if requesterAgent != agentID {
 			return nil, models.ErrPermissionDenied
 		}
 	}
 
-	if agentFound && agentId != agentID {
-		return nil, models.ErrPermissionDenied
+	if agent.Status != models.AgentStatusEnrolling {
+		// metadata might not be null
+		if err := agent.SetMetadata(metadata); err != nil {
+			return nil, errors.New("malfomed metadata")
+		}
 	}
 
 	return agent, nil

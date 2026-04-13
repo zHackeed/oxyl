@@ -39,11 +39,13 @@ func (c *CreateCompanyController) Handle(ctx fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	_, err := c.companyService.CreateCompany(ctx, request.DisplayName)
+	company, err := c.companyService.CreateCompany(ctx, request.DisplayName)
 	if err != nil {
 		slog.Error("unable to create company", "error", err)
 		return fiber.ErrInternalServerError
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "company created"})
+	return ctx.
+		Status(fiber.StatusCreated).
+		JSON(company)
 }

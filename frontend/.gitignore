@@ -1,0 +1,20 @@
+# Expo does not load if I do no have this created
+
+.expo
+bun.lock
+bun.lockb
+package-lock.json
+ios
+android
+expo-env.d.ts
+.expo/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.metro-health-check*
+.tamagui/

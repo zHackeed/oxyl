@@ -28,19 +28,37 @@ type Agent struct {
 
 	Status AgentStatus `json:"status"`
 
-	SystemOS string `json:"system_os"`
-	CPUModel string `json:"cpu_model"`
-
-	TotalMemory int64 `json:"total_memory"` // Bytes, might have to change
-	TotalDisk   int64 `json:"total_disk"`   // Bytes, might have to change
-
-	Partitions []*AgentPartition `json:"partitions"`
-
-	EnrollmentToken string `json:"-"`
+	Metadata *AgentMetadata `json:"metadata,omitempty"`
 
 	LastHandshake time.Time `json:"last_handshake,omitempty"`
 	LastUpdated   time.Time `json:"last_updated,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
+}
+
+type AgentMetadata struct {
+	SystemOS string `json:"system_os"`
+	CPUModel string `json:"cpu_model"`
+
+	TotalMemory uint64 `json:"total_memory"` // Bytes, might have to change
+	TotalDisk   uint64 `json:"total_disk"`   // Bytes, might have to change
+
+	Partitions []*AgentPartition `json:"partitions"`
+
+	EnrollmentToken string `json:"-"`
+}
+
+func NewAgentMetadata(systemOS, cpuModel string, totalMemory, totalDisk uint64, partitions []*AgentPartition, enrollmentToken string) (*AgentMetadata, error) {
+	if systemOS == "" || cpuModel == "" || totalMemory == 0 || totalDisk == 0 || len(partitions) <= 0 || enrollmentToken == "" {
+		return nil, errors.New("invalid agent metadata")
+	}
+
+	return &AgentMetadata{
+		SystemOS:        systemOS,
+		CPUModel:        cpuModel,
+		TotalDisk:       totalDisk,
+		Partitions:      partitions,
+		EnrollmentToken: enrollmentToken,
+	}, nil
 }
 
 func NewPartition(mountPoint string, totalSize uint64, raid bool, raidLevel int) (*AgentPartition, error) {
@@ -95,7 +113,6 @@ func NewAgent(displayName, registeredIP, holder string) (*Agent, error) {
 		Holder:       holder,
 		DisplayName:  displayName,
 		RegisteredIP: parsedIp,
-		Partitions:   make([]*AgentPartition, 0),
 		Status:       AgentStatusEnrolling,
 		LastUpdated:  time.Now(),
 		CreatedAt:    time.Now(),
@@ -131,11 +148,20 @@ func (a *Agent) UpdateRegisteredIP(registeredIP string) error {
 	return nil
 }
 
-func (a *Agent) AddPartition(partition *AgentPartition) {
+func (a *Agent) SetMetadata(metadata *AgentMetadata) error {
+	if metadata == nil {
+		return errors.New("metadata is empty")
+	}
+
+	a.Metadata = metadata
+	return nil
+}
+
+func (a *AgentMetadata) AddPartition(partition *AgentPartition) {
 	a.Partitions = append(a.Partitions, partition)
 }
 
-func (a *Agent) RemovePartition(mountPoint string) {
+func (a *AgentMetadata) RemovePartition(mountPoint string) {
 	for i, p := range a.Partitions {
 		if p.MountPoint == mountPoint {
 			a.Partitions = append(a.Partitions[:i], a.Partitions[i+1:]...)

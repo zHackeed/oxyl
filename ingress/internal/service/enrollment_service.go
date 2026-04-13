@@ -41,7 +41,7 @@ func NewEnrollmentService(
 }
 
 func (e *EnrollmentService) GetEnrollmentToken(ctx context.Context, req *enrollment.EnrollmentRequest) (*enrollment.EnrollmentResponse, error) {
-	agentId, found := utils.GetValueFromContext[string](ctx, models.ContextAgent)
+	agentId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyAgent)
 	if !found {
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}

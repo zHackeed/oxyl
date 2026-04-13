@@ -116,30 +116,6 @@ func (c *CompanyStorage) GetCompanies(ctx context.Context) ([]*models.Company, e
 	return companies, nil
 }
 
-func (c *CompanyStorage) GetMembersOfCompany(ctx context.Context, companyID string) ([]*models.CompanyMember, error) {
-	sql := `SELECT user_id, permission_bitwise FROM company_members WHERE company_id = $1`
-	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get company members: %w", err)
-	}
-
-	defer rows.Close()
-	var members []*models.CompanyMember
-	for rows.Next() {
-		var member models.CompanyMember
-		if err := rows.Scan(&member.UserID, &member.Permission); err != nil {
-			return nil, fmt.Errorf("unable to get company members: %w", err)
-		}
-		members = append(members, &member)
-	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("unable to get company members: %w", rows.Err())
-	}
-
-	return members, nil
-}
-
 func (c *CompanyStorage) GetCompaniesOfUser(ctx context.Context, userID string) ([]*models.Company, error) {
 	sql := `SELECT c.id, c.display_name, c.holder, c.limit_nodes, c.enabled, c.created_at FROM companies c INNER JOIN company_members cm ON c.id = cm.company_id WHERE cm.user_id = $1`
 
@@ -223,6 +199,33 @@ func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, userId, company
 	return nil
 }
 
+func (c *CompanyStorage) GetMembersOfCompany(ctx context.Context, companyID string) ([]*models.CompanyMemberComposite, error) {
+	sql := `SELECT u.name, u.surname, u.email, cm.permission_bitwise, created_at FROM company_members as cm INNER JOIN users u on cm.user_id = u.id WHERE cm.company_id=$1`
+
+	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get company members: %w", err)
+	}
+
+	members := make([]*models.CompanyMemberComposite, 0)
+
+	for rows.Next() {
+		member := new(models.CompanyMemberComposite)
+
+		if err := rows.Scan(&member.User.Name, &member.User.Surname, &member.User.Email, &member.Permissions, &member.CreatedAt); err != nil {
+			return nil, errors.New("failed parsing user")
+		}
+
+		members = append(members, member)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read from tables %w", err)
+	}
+
+	return members, nil
+}
+
 func (c *CompanyStorage) RemoveMemberFromCompany(ctx context.Context, companyID, userID string) error {
 	sql := `DELETE FROM company_members WHERE user_id = $1 AND company_id = $2`
 	if _, err := c.conn.Pool().Exec(ctx, sql, userID, companyID); err != nil {
@@ -280,7 +283,7 @@ func (c *CompanyStorage) GetNotificationThresholdsOfCompany(ctx context.Context,
 	return thresholds, nil
 }
 func (c *CompanyStorage) SetNotificationThresholdForCompany(ctx context.Context, companyID string, notificationType models.NotificationType, threshold int) error {
-	sql := `INSERT INTO company_notification_thresholds (holder, notification_type, value) VALUES ($1, $2, $3) ON CONFLICT (holder, notification_type) DO UPDATE SET value = $3`
+	sql := `UPDATE company_notification_thresholds SET value = $3 WHERE holder = $1 AND notification_type = $2`
 	if _, err := c.conn.Pool().Exec(ctx, sql, companyID, notificationType, threshold); err != nil {
 		return fmt.Errorf("unable to set notification threshold for company: %w", err)
 	}

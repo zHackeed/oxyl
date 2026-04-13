@@ -61,7 +61,7 @@ func (a *AgentEnrollmentInterceptor) Intercept(ctx context.Context, req any, inf
 		return nil, ErrAgentMissingHeader
 	}
 
-	agent, found := utils.GetValueFromContext[string](ctx, models.ContextAgent)
+	agent, found := utils.GetValueFromContext[string](ctx, models.ContextKeyAgent)
 	if !found {
 		return nil, ErrAgentMissingHeader
 	}
@@ -112,6 +112,6 @@ func (a *AgentEnrollmentInterceptor) requestEnrolTokenAgent(ctx context.Context,
 		return "", fmt.Errorf("agent is not enrolled")
 	}
 
-	a.cache.SetWithTTL(agentId, agent.EnrollmentToken, 1, 24*time.Hour)
-	return agent.EnrollmentToken, nil
+	a.cache.SetWithTTL(agentId, agent.Metadata.EnrollmentToken, 1, 24*time.Hour)
+	return agent.Metadata.EnrollmentToken, nil
 }

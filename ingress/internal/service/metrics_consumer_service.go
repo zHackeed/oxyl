@@ -31,7 +31,7 @@ func NewMetricsConsumerService(metricStorage *storage.MonitoringStorage) *Metric
 }
 
 func (m *MetricsConsumerService) SendMetrics(ctx context.Context, in *monitoring.AgentMetrics) (*monitoring.AgentMetricsResponse, error) {
-	agentId, found := utils.GetValueFromContext[string](ctx, models.ContextAgent)
+	agentId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyAgent)
 	if !found {
 		return nil, status.Error(codes.InvalidArgument, "unauthenticated or missing context data")
 	}

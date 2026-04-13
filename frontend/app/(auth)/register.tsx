@@ -1,74 +1,108 @@
-import { WrappedView } from '@/components/ui/WrappedView';
-import { H2, YStack, Text, Button } from 'tamagui';
-import { InputField } from '@/components/ui/InputField';    
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useAuthStore } from '@/store/auth/useAuthStore';
-import { useAuthFacade } from '@/store/auth/useAuthFacade';
-import { AuthService } from '@/lib/service/auth-service';
+import { UserRegisterRequest } from '@/lib/api/requests/user';
+import { AuthService } from '@/lib/service/auth';
+import { WrappedViewDismissable } from '@/components/ui/WrappedView';
+import { H2, YStack, Text, Form } from 'tamagui';
+import { InputField } from '@/components/ui/InputField';
+import { SubmitterButton } from '@/components/ui/Button';
 
+// TODO: Use modal instead of full view?
 const Register = () => {
-    const router = useRouter();
+  const router = useRouter();
 
-    const [name, setName] = useState("");
-    const [surname, setSurname] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState<string>('');
+  const [errors, setErrors] = useState<string>('');
+  const [registationData, setRegistationData] = useState<UserRegisterRequest>({
+    name: '',
+    surname: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
 
+  const setFormData = (field: keyof UserRegisterRequest, value: string) => {
+    setRegistationData({
+      ...registationData,
+      [field]: value,
+    });
+    setErrors('');
+  };
 
-    const handleSignIn = async () => {
-        if (name === '' || surname === '' || email === '' || password === '' || confirmPassword === '') {
-            return;
+  const handleSignIn = async () => {
+    await AuthService.register(registationData)
+      .then(async (success: boolean) => {
+        if (success) {
+          setMessage('Registrado, por favor inicia sesión...');
+          setTimeout(() => router.back(), 3000);
         }
+      })
+      .catch((error) => {
+        setErrors(error.message);
+      });
+  };
 
-        // todo: validation logic
-        // ->
-
-        await AuthService.register(name, surname, email, password)
-        router.back()
-    }
-
-    return (
-        <WrappedView alignItems="center">
-            <H2>Create a new account</H2>
-            
-            <YStack width="90%" gap={16} marginTop={32} >
-                <YStack gap={8}>
-                    <Text>Name</Text>
-                    <InputField placeholder="Jhon" onChangeText={setName} />
-                </YStack>
-                 <YStack gap={8}>
-                    <Text>Surname</Text>
-                    <InputField placeholder="Doe"  onChangeText={setSurname}/>
-                </YStack>
-                 <YStack gap={8}>
-                    <Text>Email</Text>
-                    <InputField placeholder="Email" autoCapitalize="none" autoComplete="email" autoCorrect={false} onChangeText={setEmail} />
-                </YStack>
-                 <YStack gap={8}>
-                    <Text>Password</Text>
-                    <InputField placeholder="Enter password"  autoCapitalize="none" secureTextEntry size="$4" color="$white" onChangeText={setPassword} />
-                </YStack>
-                 <YStack gap={8}>
-                    <Text>Confirm Password</Text>
-                    <InputField placeholder="Confirm password"  autoCapitalize="none" secureTextEntry size="$4" color="$white" onChangeText={setConfirmPassword} />
-                </YStack>
-                
-                <Button 
-                    backgroundColor="$green9" 
-                    width="75%" 
-                    pressStyle={{ backgroundColor: '$green10' }} 
-                    alignSelf="center" 
-                    marginTop={16}
-                    onPress={handleSignIn}
-                >
-                    Register
-                </Button>
+  return (
+    <WrappedViewDismissable>
+      <Form flex={1} onSubmit={handleSignIn} justify="center" items="center">
+        <YStack>
+          <H2>Crea una cuenta nueva</H2>
+          <YStack gap={16} mt={32}>
+            <YStack gap={8}>
+              <Text fontFamily="$body">Nombre</Text>
+              <InputField placeholder="Jhon" onChangeText={(value) => setFormData('name', value)} />
             </YStack>
-        </WrappedView>
-    );
-}
+            <YStack gap={8}>
+              <Text fontFamily="$body">Apellido</Text>
+              <InputField
+                placeholder="Doe"
+                onChangeText={(value) => setFormData('surname', value)}
+              />
+            </YStack>
+            <YStack gap={8}>
+              <Text fontFamily="$body">Email</Text>
+              <InputField
+                placeholder="Email"
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect={false}
+                onChangeText={(value) => setFormData('email', value)}
+              />
+            </YStack>
+            <YStack gap={8}>
+              <Text>Contraseña</Text>
+              <InputField
+                placeholder="Enter password"
+                autoCapitalize="none"
+                secureTextEntry
+                size="$4"
+                color="$color"
+                onChangeText={(value) => setFormData('password', value)}
+              />
+            </YStack>
+            <YStack gap={8}>
+              <Text>Confirmar Contraseña</Text>
+              <InputField
+                placeholder="Confirmar contraseña"
+                autoCapitalize="none"
+                secureTextEntry
+                size="$4"
+                color="$color"
+                onChangeText={(value) => setFormData('confirmPassword', value)}
+              />
+            </YStack>
 
+            <YStack gap={8}>
+              {errors && <Text color="red">{errors}</Text>}
+              {message && <Text color="green">{message}</Text>}
+            </YStack>
+            
+            <SubmitterButton bg="$green9">Registrarse</SubmitterButton>
+          </YStack>
+        </YStack>
+      </Form>
+    </WrappedViewDismissable>
+  );
+};
 
 export default Register;

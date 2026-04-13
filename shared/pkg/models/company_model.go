@@ -18,6 +18,11 @@ type CompanyMember struct {
 	UserID     string            `json:"user_id"`
 	Permission CompanyPermission `json:"permission"`
 }
+type CompanyMemberComposite struct {
+	User        UserResumed       `json:"user"`
+	Permissions CompanyPermission `json:"permissions"`
+	CreatedAt   time.Time         `json:"created_at"`
+}
 
 type Company struct {
 	ID string `json:"id"`

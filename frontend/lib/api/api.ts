@@ -1,84 +1,88 @@
-import { AuthStatus, useAuthStore } from '@/store/auth/useAuthStore';
-import { TokenService } from '../service/token-service';
+import { TokenService } from '../service/token';
 import axios, { InternalAxiosRequestConfig } from 'axios';
+import useAuthStore from '@/store/auth/useAuthStore';
+import { useAuthStoreAxiosState } from '@/store/auth/useAuthAxiosFacade';
+
+const AUTH_BASE_URL = 'http://127.0.0.1:19999/auth';
 
 const API_CONFIG = {
-  baseURL: "http://localhost:19999",
+  // Todo: make configurable
+  baseURL: 'http://127.0.0.1:19999/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
 };
 
-const caller = axios.create(API_CONFIG);
+const Caller = axios.create(API_CONFIG);
 
-caller.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  console.log(process.env.OXYL_API_ENDPOINT)
-  const token = await TokenService.getAccessToken();
+const AuthCaller = axios.create({
+  baseURL: 'http://127.0.0.1:19999/',
+  withCredentials: false,
+});
+
+Caller.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const { token } = useAuthStoreAxiosState();
   if (token && new Date(token.expires_at) > new Date()) {
-      config.headers['Authorization'] = `Bearer ${token.token}`;
+    config.headers['Authorization'] = `Bearer ${token.token}`;
   }
+
   return config;
 });
 
-caller.interceptors.response.use(
+let refreshPromise: Promise<void> | null = null;
+
+Caller.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = await TokenService.getRefreshToken();
+      const { refreshTokens, signOut, refreshToken } = useAuthStoreAxiosState();
+
       if (!refreshToken || refreshToken.expires_at < new Date()) {
-        useAuthStore.setState({
-          token: null,
-          refreshToken: null,
-          status: AuthStatus.UNAUTHENTICATED,
-        });
+        await signOut();
         return Promise.reject(error);
       }
 
-      try {
-        const response = await axios.post(`${API_CONFIG.baseURL}/auth/refresh`, {
-          refresh_token: refreshToken.token,
-        });
-
-        if (response.status !== 200) {
-          await TokenService.clearTokens();
-          useAuthStore.setState({
-            token: null,
-            refreshToken: null,
-            status: AuthStatus.UNAUTHENTICATED,
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${AUTH_BASE_URL}/refresh`, {
+            refresh_token: refreshToken.token,
+          })
+          .then(async (response) => {
+            console.log('refresing');
+            if (response.status !== 200) {
+              await TokenService.clearTokens();
+              signOut();
+              return Promise.reject(new Error('Failed to refresh token'));
+            }
+            // Update tokens in storage
+            await refreshTokens(response.data.access_token, response.data.refresh_token);
+          })
+          .catch(async (error) => {
+            console.error('Failed to refresh token:', error);
+            await signOut();
+            return Promise.reject(error);
+          })
+          .finally(() => {
+            refreshPromise = null;
           });
-          return Promise.reject(new Error('Failed to refresh token'));
-        }
+      }
 
-        // Update tokens in storage
-        await TokenService.setAccessToken(response.data.access_token);
-        await TokenService.setRefreshToken(response.data.refresh_token);
-
-        useAuthStore.setState({
-          token: response.data.access_token,
-          refreshToken: response.data.refresh_token,
-          status: AuthStatus.AUTHENTICATED,
-        });
+      try {
+        await refreshPromise;
       } catch (error) {
-        console.error('Failed to refresh token:', error);
-        useAuthStore.setState({
-          token: null,
-          refreshToken: null,
-          status: AuthStatus.UNAUTHENTICATED,
-        });
         return Promise.reject(error);
       }
 
       // retry the original request with the new access token that might be renewed?
-      return caller(originalRequest);
+      return Caller(originalRequest);
     }
 
     return Promise.reject(error);
   }
 );
 
-export default caller;
+export { Caller, AuthCaller };

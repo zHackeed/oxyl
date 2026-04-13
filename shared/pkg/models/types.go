@@ -53,7 +53,7 @@ type JWTTokenType string
 
 const (
 	ContextKeyUser  ContextKey = "oxyl_user_identifier"
-	ContextAgent    ContextKey = "oxyl_agent_identifier"
+	ContextKeyAgent ContextKey = "oxyl_agent_identifier"
 	ContextInternal ContextKey = "oxyl_internal_request"
 )
 

@@ -42,3 +42,31 @@ func HasPermission(currentPermissions CompanyPermission, required CompanyPermiss
 	slog.Info("checking permissions", "current", currentPermissions, "required", required, "has", currentPermissions&required, "result", currentPermissions&required != 0)
 	return currentPermissions&required != 0
 }
+
+func (p CompanyPermission) StringifiedPermissions() []string {
+	var parts []string
+	if p&CompanyPermissionManageWebhooks != 0 {
+		parts = append(parts, "manage_webhooks")
+	}
+	if p&CompanyPermissionManageThresholds != 0 {
+		parts = append(parts, "manage_thresholds")
+	}
+	if p&CompanyPermissionManageMembers != 0 {
+		parts = append(parts, "manage_members")
+	}
+	if p&CompanyPermissionManageCompany != 0 {
+		parts = append(parts, "manage_company")
+	}
+	if p&CompanyPermissionManageAgents != 0 {
+		parts = append(parts, "manage_agents")
+	}
+	if p&CompanyPermissionView != 0 {
+		parts = append(parts, "view")
+	}
+
+	if p&CompanyPermissionOwner != 0 {
+		parts = append(parts, "owner")
+	}
+
+	return parts
+}

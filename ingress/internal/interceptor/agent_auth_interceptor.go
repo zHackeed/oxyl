@@ -59,6 +59,6 @@ func (a *AgentAuthInterceptor) Intercept(ctx context.Context, req any, _ *grpc.U
 		return nil, ErrInvalidToken
 	}
 
-	internalCtx := context.WithValue(ctx, models.ContextAgent, parsedToken.Identifier)
+	internalCtx := context.WithValue(ctx, models.ContextKeyAgent, parsedToken.Identifier)
 	return handler(internalCtx, req)
 }

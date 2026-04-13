@@ -32,7 +32,7 @@ func (m *ModifyThresholdController) GetPath() string {
 }
 
 func (m *ModifyThresholdController) RequestRequirements() *apiModel.RequestRequirements {
-	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.ModifyThresholdRequest{})
+	return apiModel.NewRequestRequirements(apiModel.MixedData, requests.ModifyThresholdRequest{})
 }
 
 func (m *ModifyThresholdController) Handle(ctx fiber.Ctx) error {

@@ -31,6 +31,10 @@ func (u *UserService) Authenticate(ctx context.Context, email, password string) 
 		return nil, fmt.Errorf("unable to find user: %w", err)
 	}
 
+	if !user.Enabled {
+		return nil, fmt.Errorf("the user account is disabled")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, errors.New("invalid credentials")
 	}
@@ -58,6 +62,7 @@ func (u *UserService) Register(ctx context.Context, name, surname, email, passwo
 }
 
 // UpdatePassword should force a logout and invalidation of all sessions.
+// Todo: might want to implement this?
 func (u *UserService) UpdatePassword(ctx context.Context, newPassword string) error {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
@@ -81,7 +86,6 @@ func (u *UserService) UpdatePassword(ctx context.Context, newPassword string) er
 	slog.Info("[UserService] password updated", "user_id", userId)
 
 	return u.userStorage.UpdatePassword(ctx, userId, string(hashed))
-
 }
 
 func (u *UserService) GetUser(ctx context.Context) (*models.User, error) {
