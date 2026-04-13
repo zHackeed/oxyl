@@ -55,9 +55,11 @@ const AgentIndex = () => {
           </Link>
         }
         ListFooterComponent={
-          <Link href="/(modals)/new-agent" push asChild>
-            <ModalRequest title="¿Quieres registrar un agente?" subTitle="Haz clic aquí" />
-          </Link>
+          !hasAgents ? null : (
+            <Link href="/(modals)/new-agent" push asChild>
+              <ModalRequest title="¿Quieres registrar un agente?" subTitle="Haz clic aquí" />
+            </Link>
+          )
         }
       />
     </WrappedView>
