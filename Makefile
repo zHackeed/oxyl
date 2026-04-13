@@ -6,7 +6,6 @@ MODULES := $(shell bash -c 'find . -type f -iname "main.go" -exec dirname {} \;'
 
 all: build
 
-# we should always generate the corresponding generated values for the code. (Consistency)
 generate:
 	@echo "Generating buildable dependencies..."
 	@go generate ./shared/pkg/version/version.go
