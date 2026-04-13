@@ -2,7 +2,7 @@
   <img src="./docs/icons/logo.png" alt="Oxyl Logo" width="150"  />
   <h1>Oxyl - Sistema de Monitoreo de Sistemas</h1>
 
-  <p>Un sistema de monitoreo de sistemas que permite el monitoreo de sistemas remotos a través de agentes instalados en los mismos.</p>
+  <p>Sistema de monitoreo de infraestructura Linux — plug-and-play, escalable y sencillo</p>
 </div>
 
 ## Compilación
