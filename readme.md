@@ -7,7 +7,7 @@
 
 ## Compilación
 
-> **Nota**: Para poder compilar el proyecto, es necesario tener instalado `make`, `golang`, `protoc` y estar en un entorno de desarrollo compatible (Linux) debido a que se requiere compilar dependencias las cuales dependientes de la arquitectura del sistema.
+> **Nota**: Para poder compilar el proyecto, es necesario tener instalado `make`, `golang`, `protoc` y estar en un entorno de desarrollo compatible (Linux) debido a que se requiere compilar dependencias las cuales son dependientes de la arquitectura del sistema.
 
 Para compilar el proyecto, ejecuta el siguiente comando:
 
