@@ -31,12 +31,13 @@ shared/pkg/version/.branch_id
 deployment/**/data.d/*
 deployment/**/conf.d/*
 
-frontend/node_modules/*
+**/node_modules/*
+**/bun.lock
+**/bun.lockb
+**/package-lock.json
+**/dist
 
 frontend/.expo
-frontend/bun.lock
-frontend/bun.lockb
-frontend/package-lock.json
 frontend/ios
 frontend/android
 frontend/expo-env.d.ts

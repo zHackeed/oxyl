@@ -9,13 +9,13 @@ import (
 )
 
 type Token struct {
-	Identifier string
+	Identifier string `json:"identifier"`
 
 	//this can be nil if the token is not bound to a specific company, and it is not from a user
-	Holder *string
-	Type   JWTTokenType
+	Holder *string `json:"holder,omitempty"`
+	Type   JWTTokenType `json:"type"`
 
-	jwt.RegisteredClaims
+	jwt.RegisteredClaims 
 }
 
 func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token, error) {

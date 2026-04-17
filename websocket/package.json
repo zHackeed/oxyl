@@ -1,0 +1,30 @@
+{
+  "name": "websocket",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "author": "Alejandro G",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.20.0",
+    "@types/redis": "^4.0.11"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@types/node": "^25.6.0",
+    "express": "^5.2.1",
+    "jose": "^6.2.2",
+    "pg": "^8.20.0",
+    "redis": "^5.12.1",
+    "socket.io": "^4.8.3",
+    "tslog": "^4.10.2"
+  }
+}

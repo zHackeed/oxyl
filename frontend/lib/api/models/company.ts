@@ -33,7 +33,7 @@ export const CompanyPermission = {
   ManageThresholds: 'manage_thresholds',
   ManageWebhooks: 'manage_webhooks',
   Owner: 'owner',
-};
+} as const;
 
 export type CompanyPermission = (typeof CompanyPermission)[keyof typeof CompanyPermission];
 
