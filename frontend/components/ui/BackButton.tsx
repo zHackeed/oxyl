@@ -10,7 +10,7 @@ export function BackButton({ onPress }: BackButtonProps) {
   return (
     <XStack
       onPress={() => {
-        console.log("presed")
+        console.log('presed');
         if (onPress) {
           onPress();
         }

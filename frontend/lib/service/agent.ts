@@ -7,7 +7,7 @@ export const agentService = {
   get: async (companyId: string): Promise<Agent[] | null> => {
     try {
       const response = await Caller.get<Agent[]>(`/company/${companyId}/agents`);
-      
+
       if (response.status !== 200) {
         console.error('Failed to fetch agents', response);
         return null;
@@ -31,7 +31,7 @@ export const agentService = {
       }
 
       const response = await Caller.post<Agent>(`/agent/register`, agent);
-      
+
       if (response.status !== 201) {
         console.error('Failed to create agent', response);
         return Promise.reject('Failed to create agent');
@@ -39,7 +39,7 @@ export const agentService = {
 
       return response.data;
     } catch (error) {
-      return Promise.reject(error)
+      return Promise.reject(error);
     }
   },
 };

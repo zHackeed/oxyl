@@ -1,7 +1,5 @@
-import { defaultConfig } from '@tamagui/config/v5'
-import { createTamagui } from '@tamagui/core'
-
-
+import { defaultConfig } from '@tamagui/config/v5';
+import { createTamagui } from '@tamagui/core';
 
 const tamaguiConfig = createTamagui({
   ...defaultConfig,
@@ -15,13 +13,13 @@ const tamaguiConfig = createTamagui({
       backgroundStrong: '#111111',
       color: '#ffffff',
       secondary: '#a0a0a0',
-    }
-  }
-})
+    },
+  },
+});
 
-export type AppConfig = typeof tamaguiConfig
+export type AppConfig = typeof tamaguiConfig;
 declare module '@tamagui/core' {
   interface TamaguiCustomConfig extends AppConfig {}
 }
 
-export default tamaguiConfig
+export default tamaguiConfig;

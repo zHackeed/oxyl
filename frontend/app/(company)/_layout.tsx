@@ -24,7 +24,7 @@ export default function CompanyLayout() {
     if (data) {
       setCompanyPermissions(data.permissions);
     }
-  }, [data]);
+  }, [data, isLoadingError, isLoading, router, activeCompany, setCompanyPermissions]);
 
   if (isLoading) return null;
 

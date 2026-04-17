@@ -7,12 +7,8 @@ export default function ModalLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: '#0e0e0e' },
       }}>
-      <Stack.Screen
-        name="new-company"
-      />
-      <Stack.Screen
-        name="new-agent"
-      />
+      <Stack.Screen name="new-company" />
+      <Stack.Screen name="new-agent" />
     </Stack>
   );
 }

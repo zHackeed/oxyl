@@ -1,5 +1,5 @@
 import { WrappedView } from '@/components/ui/WrappedView';
-import { H2, Text, Separator, ScrollView, YStack, XStack } from 'tamagui';
+import { Text, ScrollView, YStack } from 'tamagui';
 import ThresholdCard from '@/components/feature/company/ThresholdCard';
 import { useQuery } from '@tanstack/react-query';
 import { ActiveCompanyThreshold, ThresholdMetadataMap } from '@/lib/api/models/company';

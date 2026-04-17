@@ -19,16 +19,16 @@ export default function CreateNewAgent() {
   });
   const [errors, setErrors] = useState<Error | null>(null);
 
-   const registerProcessor = useMutation({
-      mutationFn: () => agentService.create(registerData),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['company-agents'] });
-        router.dismiss();
-      },
-      onError: (error) => {
-        setErrors(error);
-      }}
-    );
+  const registerProcessor = useMutation({
+    mutationFn: () => agentService.create(registerData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-agents'] });
+      router.dismiss();
+    },
+    onError: (error) => {
+      setErrors(error);
+    },
+  });
 
   return (
     <BaseModal

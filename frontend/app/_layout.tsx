@@ -2,7 +2,11 @@ import tamaguiConfig from '@/components/ui/tamagui.config';
 import { SplashScreen, Stack } from 'expo-router';
 import { useAuthFacade } from '@/store/auth/useAuthFacade';
 import { AuthStatus } from '@/store/auth/useAuthStore';
-import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { TamaguiProvider, Theme } from '@tamagui/core';
 import * as SystemUI from 'expo-system-ui';

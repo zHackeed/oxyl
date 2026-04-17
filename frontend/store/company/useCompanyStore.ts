@@ -13,20 +13,20 @@ export interface CompanyState {
 const initalState = {
   selectedCompany: null,
   companyPermission: null,
-}
+};
 
 export const useCompanyStore = createWithEqualityFn<CompanyState>((set) => ({
   ...initalState,
   setCompany: (company: Company | null) => {
     set((state) => ({
       ...state,
-      selectedCompany: company
-    }))
+      selectedCompany: company,
+    }));
   },
   setCompanyPermissions: (permissions: CompanyPermission[] | null) => {
     set((state) => ({
       ...state,
-      companyPermission: permissions
-    }))
+      companyPermission: permissions,
+    }));
   },
 }));

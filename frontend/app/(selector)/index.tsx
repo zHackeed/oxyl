@@ -1,5 +1,5 @@
 import { WrappedView } from '@/components/ui/WrappedView';
-import { H2, Text, YStack, Separator } from 'tamagui';
+import { Text, YStack } from 'tamagui';
 import ModalRequest from '@/components/ui/ModalRequest';
 import { Company } from '@/lib/api/models/company';
 import { companyService } from '@/lib/service/company';

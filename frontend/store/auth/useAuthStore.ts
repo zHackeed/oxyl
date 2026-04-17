@@ -1,7 +1,7 @@
 import { AuthToken } from '@/lib/api/models/token';
 import { AuthService } from '@/lib/service/auth';
 import { TokenService } from '@/lib/service/token';
-import { createWithEqualityFn } from 'zustand/traditional'
+import { createWithEqualityFn } from 'zustand/traditional';
 
 export enum AuthStatus {
   AUTHENTICATED = 'authenticated',
@@ -38,8 +38,7 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
     return token;
   };
 
-  Promise
-    .all([getRefreshToken(), getAccessToken()])
+  Promise.all([getRefreshToken(), getAccessToken()])
     .then(([refreshToken, token]) => {
       if (refreshToken && token) {
         set((state) => ({
@@ -54,15 +53,15 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
           status: AuthStatus.UNAUTHENTICATED,
         }));
       }
-    }).catch((error) => {
-      console.error("Error initializing auth store", error);
+    })
+    .catch((error) => {
+      console.error('Error initializing auth store', error);
       set((state) => ({
         ...state,
         status: AuthStatus.UNAUTHENTICATED,
       }));
     });
 
-   
   return {
     ...initialState,
     signIn: async (email: string, password: string) => {
@@ -75,7 +74,7 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
           status: AuthStatus.AUTHENTICATED,
         }));
       }
-    
+
       return false;
     },
 
@@ -86,7 +85,7 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
         ...state,
         token: token,
         refreshToken: refreshToken,
-      }))
+      }));
     },
 
     signOut: async () => {
@@ -96,9 +95,9 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
         token: null,
         refreshToken: null,
         status: AuthStatus.UNAUTHENTICATED,
-      }))
+      }));
     },
   };
-})
+});
 
-export default useAuthStore
+export default useAuthStore;

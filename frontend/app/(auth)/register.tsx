@@ -96,7 +96,7 @@ const Register = () => {
               {errors && <Text color="red">{errors}</Text>}
               {message && <Text color="green">{message}</Text>}
             </YStack>
-            
+
             <SubmitterButton bg="$green9">Registrarse</SubmitterButton>
           </YStack>
         </YStack>

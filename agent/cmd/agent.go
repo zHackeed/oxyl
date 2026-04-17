@@ -38,11 +38,11 @@ func init() {
 		})
 	})
 
-	agentCmd.Flags().StringVarP(&grpcEndpoint, "grpc-endpoint", "g", "https://ingress.oxyl.zhacked.me", "gRPC endpoint")
-	agentCmd.Flags().StringVarP(&agentId, "id", "i", "", "Agent ID")
-	agentCmd.Flags().StringVarP(&loginEndpoint, "login-endpoint", "l", "https://api.oxyl.zhacked.me/agent/auth/login", "Login endpoint")
-	agentCmd.Flags().StringVarP(&refreshEndpoint, "refresh-endpoint", "r", "https://api.oxyl.zhacked.me/agent/auth/refresh", "Refresh endpoint")
-	agentCmd.Flags().StringVarP(&shutdownEndpoint, "shutdown-endpoint", "s", "https://api.oxyl.zhacked.me/agent/auth/shutdown", "Shutdown endpoint")
+	agentCmd.PersistentFlags().StringVarP(&grpcEndpoint, "grpc-endpoint", "g", "https://ingress.oxyl.zhacked.me", "gRPC endpoint")
+	agentCmd.PersistentFlags().StringVarP(&agentId, "id", "i", "", "Agent ID")
+	agentCmd.PersistentFlags().StringVarP(&loginEndpoint, "login-endpoint", "l", "https://api.oxyl.zhacked.me/agent/auth/login", "Login endpoint")
+	agentCmd.PersistentFlags().StringVarP(&refreshEndpoint, "refresh-endpoint", "r", "https://api.oxyl.zhacked.me/agent/auth/refresh", "Refresh endpoint")
+	agentCmd.PersistentFlags().StringVarP(&shutdownEndpoint, "shutdown-endpoint", "s", "https://api.oxyl.zhacked.me/agent/auth/shutdown", "Shutdown endpoint")
 
 	if err := agentCmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to mark flag required", "error", err)

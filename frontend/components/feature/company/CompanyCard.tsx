@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { View, Text, XStack, YStack, styled } from 'tamagui';
 
 export interface CompanyCardProps {
-  company: Company
+  company: Company;
 }
 
 const StyledXStack = styled(XStack, {
@@ -34,10 +34,11 @@ export function CompanyCard({ company }: CompanyCardProps) {
   const router = useRouter();
   const { setCompany } = useCompanyFacade();
   return (
-    <StyledXStack onPress={() => {
-      setCompany(company)
-      router.push('/(company)')
-    }}>
+    <StyledXStack
+      onPress={() => {
+        setCompany(company);
+        router.push('/(company)');
+      }}>
       <IconStyle>
         <Building2 size={16} color="$color8" />
       </IconStyle>

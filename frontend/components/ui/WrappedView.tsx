@@ -18,7 +18,9 @@ export const SafeAreaViewStyled = styled(SafeAreaView, {
 export function WrappedViewDismissable({ children, ...props }: ViewProps) {
   return (
     <SafeAreaViewStyled>
-      <KeyboardAvoidingView style={{ flex: 1,}} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <WrappedViewContainer {...props}>{children}</WrappedViewContainer>
       </KeyboardAvoidingView>
     </SafeAreaViewStyled>
@@ -27,7 +29,9 @@ export function WrappedViewDismissable({ children, ...props }: ViewProps) {
 
 export function WrappedViewUnsafeDismissable({ children, ...props }: ViewProps) {
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <WrappedViewContainer {...props}>{children}</WrappedViewContainer>
     </KeyboardAvoidingView>
   );

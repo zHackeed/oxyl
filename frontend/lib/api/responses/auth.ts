@@ -1,5 +1,4 @@
-
-import { AuthToken } from "@/lib/api/models/token";
+import { AuthToken } from '@/lib/api/models/token';
 
 type AuthTokenResponse = {
   access_token: AuthToken;

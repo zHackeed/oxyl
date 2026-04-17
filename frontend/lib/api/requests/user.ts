@@ -19,5 +19,4 @@ type LogoutRequest = {
   refresh_token: string;
 };
 
-
 export { UserLoginRequest, UserRegisterRequest, RefreshTokenRequest, LogoutRequest };

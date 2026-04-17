@@ -1,5 +1,4 @@
-import useAuthStore from "./useAuthStore";
-
+import useAuthStore from './useAuthStore';
 
 // TODO: Fix require cycle
 export const useAuthStoreAxiosState = () => {

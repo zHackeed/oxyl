@@ -1,5 +1,5 @@
-import { InputField } from "@/components/ui/InputField";
-import { YStack, styled, Text} from "tamagui";
+import { InputField } from '@/components/ui/InputField';
+import { YStack, styled, Text } from 'tamagui';
 
 export interface ModalEntryProps {
   name: string;
@@ -9,7 +9,7 @@ export interface ModalEntryProps {
 
 const EntryContainer = styled(YStack, {
   gap: '$2',
-})
+});
 
 const EntryLabel = styled(Text, {
   fontSize: 12,
@@ -17,7 +17,7 @@ const EntryLabel = styled(Text, {
   letterSpacing: 1,
   color: '$color9',
   textTransform: 'uppercase',
-})
+});
 
 export function ModalEntry({ name, defaultValue, consumeValue }: ModalEntryProps) {
   return (
@@ -25,5 +25,5 @@ export function ModalEntry({ name, defaultValue, consumeValue }: ModalEntryProps
       <EntryLabel>{name}</EntryLabel>
       <InputField placeholder={defaultValue} onChangeText={consumeValue} />
     </EntryContainer>
-  )
+  );
 }

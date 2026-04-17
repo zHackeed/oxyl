@@ -4,6 +4,9 @@ import * as Yup from 'yup';
 
 export const createAgentSchemaValidator = createValidationScheme<CreateAgentRequest>(
   Yup.object({
+    holder: Yup.string()
+      .max(255, 'El nombre del agente no puede exceder 255 caracteres')
+      .required('El nombre del agente es requerido'),
     display_name: Yup.string()
       .max(255, 'El nombre del agente no puede exceder 255 caracteres')
       .required('El nombre del agente es requerido'),
@@ -13,5 +16,5 @@ export const createAgentSchemaValidator = createValidationScheme<CreateAgentRequ
         'La IP del agente debe ser válida'
       ) // https://github.com/sindresorhus/ip-regex/blob/main/index.js#L8
       .required('La IP del agente es requerida'),
-  })
+  }).noUnknown(true)
 );

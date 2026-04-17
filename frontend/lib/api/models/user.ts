@@ -13,7 +13,4 @@ interface UserResumed {
   email: string;
 }
 
-export {
-  User,
-  UserResumed
-}
+export { User, UserResumed };

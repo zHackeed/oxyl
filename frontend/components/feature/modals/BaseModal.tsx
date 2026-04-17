@@ -16,7 +16,6 @@ export function BaseModal({ header, submitValue, children, onSubmit, errors }: B
   const [submitting, setSubmitting] = useState(false);
   const [localErrors, setLocalErrors] = useState<Error | null>(null);
 
-
   useEffect(() => {
     if (submitting == true) {
       const submitting = async () => {
@@ -29,7 +28,7 @@ export function BaseModal({ header, submitValue, children, onSubmit, errors }: B
       submitting();
     }
   }, [submitting]);
-  
+
   useEffect(() => {
     setLocalErrors(errors);
   }, [errors]);

@@ -3,7 +3,7 @@ import { WrappedView } from '@/components/ui/WrappedView';
 import { useQuery } from '@tanstack/react-query';
 import { companyService } from '@/lib/service/company';
 import { useCompanyFacade } from '@/store/company/userCompanyFacade';
-import { ScrollView, Text } from 'tamagui';
+import { Text } from 'tamagui';
 import { FlatList } from 'react-native';
 import { CompanyUserCard } from '@/components/feature/company/UserCard';
 
@@ -20,7 +20,7 @@ const Users = () => {
   return (
     <WrappedView>
       <GlobalHeader title="Miembros" description="Gestiona los miembros de tu compañía" />
-      
+
       {isLoading ? (
         <Text>Cargando...</Text>
       ) : isLoadingError ? (

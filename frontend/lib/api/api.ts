@@ -1,6 +1,5 @@
 import { TokenService } from '../service/token';
 import axios, { InternalAxiosRequestConfig } from 'axios';
-import useAuthStore from '@/store/auth/useAuthStore';
 import { useAuthStoreAxiosState } from '@/store/auth/useAuthAxiosFacade';
 
 const AUTH_BASE_URL = 'http://127.0.0.1:19999/auth';

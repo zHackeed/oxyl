@@ -1,4 +1,3 @@
-import { Pressable } from 'react-native';
 import { YStack, XStack, H2, Text, Separator } from 'tamagui';
 
 // <Bell self="center" size={24} color="$orange8" mr="$2" />

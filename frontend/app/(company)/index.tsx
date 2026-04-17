@@ -6,7 +6,6 @@ import { FlatList } from 'react-native';
 import { WrappedView } from '@/components/ui/WrappedView';
 import { BackButton } from '@/components/ui/BackButton';
 import GlobalHeader from '@/components/ui/Header';
-import { Text, YStack } from 'tamagui';
 import { Link } from 'expo-router';
 import ModalRequest from '@/components/ui/ModalRequest';
 import AgentCard from '@/components/feature/agent/AgentCard';

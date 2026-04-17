@@ -1,4 +1,4 @@
-import { Company, CompanyPermission } from "../models/company";
+import { Company, CompanyPermission } from '../models/company';
 
 interface CreateCompanyResponse {
   company: Company;
@@ -10,7 +10,4 @@ interface GetCompanyPermissionResponse {
   permissions: CompanyPermission[];
 }
 
-export {
-  CreateCompanyResponse,
-  GetCompanyPermissionResponse
-}
+export { CreateCompanyResponse, GetCompanyPermissionResponse };
