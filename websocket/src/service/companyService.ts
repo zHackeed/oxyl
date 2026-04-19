@@ -4,54 +4,50 @@ import { RedisChannels, type AgentStateUpdateMessage, type CompanyStartedListeni
 
 export class CompanyService {
 
-  private readonly activeListeners: Map<string, number> = new Map();
-
   constructor(
     private readonly _messenger: RedisMessenger,
     private readonly _io: Server
   ) {
     this._messenger.subscribe<AgentCreateMessage>(
-      RedisChannels.CompanyAgentCreated, 
+      RedisChannels.CompanyAgentCreated,
       this.handleAgentCreation.bind(this)
     );
     this._messenger.subscribe<AgentStateUpdateMessage>(
-      RedisChannels.CompanyAgentStateUpdated, 
+      RedisChannels.CompanyAgentStateUpdated,
       this.handleAgentStateUpdate.bind(this)
     );
     this._messenger.subscribe<AgentRemovedMessage>(
-      RedisChannels.CompanyAgentRemoved, 
+      RedisChannels.CompanyAgentRemoved,
       this.handleAgentDeletion.bind(this)
     );
   }
 
   async addListener(companyId: string, user: Socket) {
-    const count = this.activeListeners.get(companyId) || 0;
-    this.activeListeners.set(companyId, count + 1);
+    const companyRoom = this.ch(companyId)
 
-    if (count === 0) {
+    const connectedSockets = await this._io.in(companyRoom).fetchSockets()
+    if (connectedSockets.length === 0) {
       await this._messenger.publish(RedisChannels.CompanyStartedListening, {
         company: companyId,
       } as CompanyStartedListeningMessage);
     }
 
     user.join(`company:${companyId}`)
-    console.info("user has joined the company room", companyId, "count", count + 1)
+    console.info("user has joined the company room", companyId, "count", connectedSockets.length + 1)
   }
 
   async removeListener(companyId: string, user: Socket) {
-    const count = this.activeListeners.get(companyId) || 0;
-    if (count > 1) {
-      this.activeListeners.set(companyId, count - 1);
-    } else {
-      this.activeListeners.delete(companyId);
+    const companyRoom = this.ch(companyId)
+    const connectedSockets = await this._io.in(companyRoom).fetchSockets()
 
+    if ((connectedSockets.length - 1) < 1) {
       await this._messenger.publish(RedisChannels.CompanyStoppedListening, {
         company: companyId,
       } as CompanyStartedListeningMessage);
-    }
+    } 
 
     user.leave(`company:${companyId}`)
-    console.info("user has left the company room", companyId, "count", count, "notified", (count - 1) === 0)
+    console.info("user has left the company room", companyId, "count", connectedSockets.length - 1, "notified", (connectedSockets.length - 1) === 0)
   }
 
   // TODO: Implement method to handle agent state updates from Redis - 
@@ -69,11 +65,11 @@ export class CompanyService {
 
   private async handleAgentDeletion(message: AgentRemovedMessage) {
     console.log("agent deleted", message)
-    this._io.to(this.ch(message.company_id)).emit(`agent:deletion`, message.agent_id )
+    this._io.to(this.ch(message.company_id)).emit(`agent:deletion`, message.agent_id)
   }
-  
+
   private ch(companyId: string) {
     return `company:${companyId}`;
-  } 
+  }
 
 }

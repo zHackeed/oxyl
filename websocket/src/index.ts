@@ -64,11 +64,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  /*
-  socket.on("disconnecting", (rooms) => {
-
+  
+  socket.on("disconnecting", (reason) => {
+    logger.info("User is disconnecting", socket.id, reason);
+    socket.rooms.forEach((room) => {
+      if (room.startsWith("company:")) {
+        logger.info(room, room.replace("company:", ""))
+        companyService.removeListener(room.replace("company:", ""), socket);
+      }
+    });
   });
-  */
+
 
   socket.on("disconnect", () => {
     socket.leave(`user:${userId}`);

@@ -34,7 +34,16 @@ export const useWebsocketStore = createWithEqualityFn<WebsocketStateProps>()((se
     });
 
     _socket.on("connect", () => set({ connected: true }));
-    _socket.on("connect_error", (error) => console.log(error));
+    _socket.on("connect_error", (error) => {
+      console.log(error)
+
+      if (error.message !== "Unauthorized") return;
+      //As the socket is not on the proper state for reconnection, it would never try to reconnect automatically
+      //So we need to manually trigger the reconnection.
+      setTimeout(() => {
+        _socket?.connect();
+      }, 2000);
+    });
     _socket.on("disconnect", () => set({ connected: false }));
   },
 

@@ -10,9 +10,10 @@ import {
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { TamaguiProvider, Theme } from '@tamagui/core';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useWebsocketStore } from '@/store/websocket/useWebsocketStore';
+import { AppState } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 SystemUI.setBackgroundColorAsync('black'); // So for whatever reason, it is ignoring the background field on my app.json. This fixes it and makes it bearable.
@@ -22,8 +23,21 @@ const queryClient = new QueryClient();
 export default function RootLayout() {
   const { status } = useAuthFacade();
   const insets = useSafeAreaInsets();
-
   const { connect, disconnect } = useWebsocketStore();
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (status !== AuthStatus.AUTHENTICATED) return;
+
+      if (nextState === 'active') {
+        connect();
+      } else if (nextState === 'background' || nextState === 'inactive') {
+        disconnect();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [status]);
 
   useEffect(() => {
     if (status !== AuthStatus.LOADING) {
