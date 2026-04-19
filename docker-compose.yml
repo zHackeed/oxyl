@@ -92,6 +92,30 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+  websocket:
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/websocket.Dockerfile
+    networks:
+      - oxyl
+    volumes:
+      - commons:/data
+    environment:
+      REDIS_URI: ${REDIS_URI:?REDIS_URI is required}
+      TIGERDB_HOST: ${TIGERDB_HOST:?TIGERDB_HOST is required}
+      TIGERDB_PORT: ${TIGERDB_PORT:?TIGERDB_PORT is required}
+      TIGERDB_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      TIGERDB_PASS: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      TIGERDB_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    ports:
+      - "19977:19977"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
   ingress:
     build:
       context: .

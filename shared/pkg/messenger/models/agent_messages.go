@@ -12,8 +12,9 @@ type AgentCreation struct {
 }
 
 type AgentUpdate struct {
-	AgentId string             `json:"agent_id"`
-	Status  models.AgentStatus `json:"status"`
+	CompanyHolder string             `json:"company_holder"`
+	AgentId       string             `json:"agent_id"`
+	Status        models.AgentStatus `json:"status"`
 }
 
 type AgentDelete struct {

@@ -1,6 +1,6 @@
 import type { JWTPayload } from 'jose';
 
-export type JWTTokenType = 'agent' | 'user';
+export type JWTTokenType = 'AGENT' | 'USER';
 
 export interface TokenClaims extends JWTPayload {
   identifier: string;

@@ -18,11 +18,10 @@ const (
 	RedisChannelCompanyThresholdUpdate RedisChannel = "company:threshold_update"
 	RedisChannelCompanyDeletion        RedisChannel = "company:deletion"
 
-	RedisChannelAgentCreation RedisChannel = "agent:creation"
-	// Todo: think about this.
+	RedisChannelAgentCreation   RedisChannel = "company:agent:creation"
 	RedisChannelAgentEnrollment RedisChannel = "agent:enrollment"
-	RedisChannelAgentUpdate     RedisChannel = "agent:update"
-	RedisChannelAgentDeletion   RedisChannel = "agent:deletion"
+	RedisChannelAgentUpdate     RedisChannel = "company:agent:update"
+	RedisChannelAgentDeletion   RedisChannel = "company:agent:deletion"
 	RedisChannelAgentHeartbeat  RedisChannel = "agent:heartbeat"
 	RedisChannelAgentMetrics    RedisChannel = "agent:metrics"
 )

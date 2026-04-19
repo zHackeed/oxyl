@@ -12,6 +12,7 @@ import { TamaguiProvider, Theme } from '@tamagui/core';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useWebsocketStore } from '@/store/websocket/useWebsocketStore';
 
 SplashScreen.preventAutoHideAsync();
 SystemUI.setBackgroundColorAsync('black'); // So for whatever reason, it is ignoring the background field on my app.json. This fixes it and makes it bearable.
@@ -22,10 +23,24 @@ export default function RootLayout() {
   const { status } = useAuthFacade();
   const insets = useSafeAreaInsets();
 
+  const { connect, disconnect } = useWebsocketStore();
+
   useEffect(() => {
     if (status !== AuthStatus.LOADING) {
       SplashScreen.hideAsync();
     }
+
+    if (status === AuthStatus.AUTHENTICATED) {
+      connect();
+    } else {
+      disconnect();
+    }
+
+    return () => {
+      if (status === AuthStatus.AUTHENTICATED) {
+        disconnect();
+      }
+    };
   }, [status]);
 
   if (status === AuthStatus.LOADING) {

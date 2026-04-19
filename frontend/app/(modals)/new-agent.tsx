@@ -10,7 +10,7 @@ import { useState } from 'react';
 export default function CreateNewAgent() {
   const { activeCompany } = useCompanyFacade();
   const router = useRouter();
-  const queryClient = useQueryClient();
+  //const queryClient = useQueryClient();
 
   const [registerData, setRegisterData] = useState<CreateAgentRequest>({
     holder: activeCompany!.id,
@@ -22,7 +22,7 @@ export default function CreateNewAgent() {
   const registerProcessor = useMutation({
     mutationFn: () => agentService.create(registerData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-agents'] });
+      //queryClient.invalidateQueries({ queryKey: ['company-agents'] });
       router.dismiss();
     },
     onError: (error) => {

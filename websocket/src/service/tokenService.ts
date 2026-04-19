@@ -2,6 +2,7 @@ import type { TokenClaims } from "../types/token.js";
 import { readFileSync } from "node:fs";
 import * as jose from "jose";
 import { InvalidTokenError } from "../types/error.js";
+import { logger } from "../utils/logConfig.js";
 
 const TOKEN_ISSUER = "oxyl";
 const ALLOWED_AUDIENCES = [
@@ -14,7 +15,7 @@ export class TokenService {
 
   static async create(keyLocs: string): Promise<TokenService> {
     const publicKey = readFileSync(`${keyLocs}/ed25519-pub.pem`);
-    const key = await jose.importSPKI(publicKey.toString(), "Ed25519");
+    const key = await jose.importSPKI(publicKey.toString(), "EdDSA");
     return new TokenService(key);
   }
 
@@ -24,14 +25,16 @@ export class TokenService {
     
     try {
       const { payload } = await jose.jwtVerify(sanitized, this.publicKey, {
-        algorithms: ["Ed25519"],
+        algorithms: ["EdDSA"],
         issuer: TOKEN_ISSUER,
         audience: ALLOWED_AUDIENCES,
       });
     
       const claims = payload as TokenClaims;
       
-      if (claims.type != 'user') {
+      logger.info(`verified token for user ${claims.type}`);
+
+      if (claims.type != 'USER') {
         throw new InvalidTokenError('invalid token for this service');
       }
 

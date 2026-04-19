@@ -1,6 +1,6 @@
 import { Agent } from '@/lib/api/models/agent';
 import { useCompanyFacade } from '@/store/company/userCompanyFacade';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { agentService } from '@/lib/service/agent';
 import { FlatList } from 'react-native';
 import { WrappedView } from '@/components/ui/WrappedView';
@@ -9,15 +9,35 @@ import GlobalHeader from '@/components/ui/Header';
 import { Link } from 'expo-router';
 import ModalRequest from '@/components/ui/ModalRequest';
 import AgentCard from '@/components/feature/agent/AgentCard';
+import { getSocket, useWebsocketStore } from '@/store/websocket/useWebsocketStore';
+import { useEffect } from 'react';
 
 const AgentIndex = () => {
   const { setCompany, activeCompany, setCompanyPermissions } = useCompanyFacade();
+  const { join, leave } = useWebsocketStore();
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery<Agent[] | null>({
     queryKey: ['company-agents'],
     queryFn: () => {
       return agentService.get(activeCompany?.id || '');
     },
   });
+
+  useEffect(() => {
+    join('company', activeCompany!.id);
+    
+    const socket = getSocket();
+    const handler = (agent: Agent) => {
+      queryClient.setQueryData<Agent[]>(['company-agents'], (prev) => [...(prev || []), agent]);
+    };
+
+    socket?.on('agent:creation', handler);
+
+    return () => {
+      leave('company', activeCompany!.id);
+      socket?.off('agent:creation', handler);
+    };
+  }, []);
 
   const hasAgents = data && data.length > 0;
 

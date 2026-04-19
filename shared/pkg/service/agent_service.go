@@ -61,7 +61,7 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredI
 	}
 
 	// todo: notify the users watching the interface and resort the gui on their end.
-	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentCreation{
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentCreation, redisModels.AgentCreation{
 		CompanyId:    holder,
 		AgentId:      model.ID,
 		State:        models.AgentStatusEnrolling,

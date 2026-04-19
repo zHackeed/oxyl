@@ -13,5 +13,5 @@ export enum CompanyPermission {
 }
 
 export function hasPermission(current: CompanyPermission, required: CompanyPermission): boolean {
-  return (current & required) === 0;
+  return (current & required) !== 0;
 }
