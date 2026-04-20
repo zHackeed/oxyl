@@ -137,7 +137,7 @@ func createServices(messenger *datasource.RedisConnection, companyStorage *stora
 ) {
 	agentService := service.NewAgentService(messenger, companyStorage, agentStorage)
 
-	tokenService, err := service.NewTokenService(tokenStorage)
+	tokenService, err := service.NewTokenService(tokenStorage, messenger)
 	if err != nil {
 		return nil, nil, err
 	}

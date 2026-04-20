@@ -6,6 +6,7 @@ import { RedisMessenger } from "./db/redisConn.js";
 import type { CompanyUpdateActions, SocketMetadata, UserSocketReq } from "./types/socket.js";
 import { CompanyMiddleware } from "./middleware/companyMiddleware.js";
 import { CompanyService } from "./service/companyService.js";
+import { UserInvalidationService } from "./service/invalidationService.js";
 
 const io = new Server<
   UserSocketReq,
@@ -25,11 +26,14 @@ const io = new Server<
 
 const redisMessenger = new RedisMessenger(process.env["REDIS_URL"]);
 await redisMessenger.connect();
-const companyMiddleware = new CompanyMiddleware('join');
 
+new UserInvalidationService(io, redisMessenger);
+
+const companyMiddleware = new CompanyMiddleware('join');
 const tokenService = await TokenService.create("/data/keys");
 const authMiddleware = new AuthMiddleware(tokenService);
 const companyService = new CompanyService(redisMessenger, io);
+
 
 io.use(authMiddleware.handle);
 io.on("connection", (socket) => {
@@ -69,7 +73,6 @@ io.on("connection", (socket) => {
     logger.info("User is disconnecting", socket.id, reason);
     socket.rooms.forEach((room) => {
       if (room.startsWith("company:")) {
-        logger.info(room, room.replace("company:", ""))
         companyService.removeListener(room.replace("company:", ""), socket);
       }
     });

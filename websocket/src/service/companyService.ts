@@ -50,22 +50,20 @@ export class CompanyService {
     console.info("user has left the company room", companyId, "count", connectedSockets.length - 1, "notified", (connectedSockets.length - 1) === 0)
   }
 
-  // TODO: Implement method to handle agent state updates from Redis - 
-
   // * redis incoming messages
   private async handleAgentCreation(message: AgentCreateMessage) {
     console.log("agent created", message)
-    this._io.to(this.ch(message.company_id)).emit("agent:creation", message)
+    this._io.in(this.ch(message.company_id)).emit("agent:creation", message)
   }
 
   private async handleAgentStateUpdate(message: AgentStateUpdateMessage) {
     console.log("agent state updated", message)
-    this._io.to(this.ch(message.company)).emit(`agent:update`, message.agent, message.state)
+    this._io.in(this.ch(message.company)).emit(`agent:update`, message.agent, message.state)
   }
 
   private async handleAgentDeletion(message: AgentRemovedMessage) {
     console.log("agent deleted", message)
-    this._io.to(this.ch(message.company_id)).emit(`agent:deletion`, message.agent_id)
+    this._io.in(this.ch(message.company_id)).emit(`agent:deletion`, message.agent_id)
   }
 
   private ch(companyId: string) {

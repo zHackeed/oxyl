@@ -15,6 +15,14 @@ type RefreshController struct {
 	tokenService *service.TokenService
 }
 
+func NewRefreshController(
+	tokenService *service.TokenService,
+) *RefreshController {
+	return &RefreshController{
+		tokenService: tokenService,
+	}
+}
+
 func (r *RefreshController) GetMethod() apiModel.HttpMethod {
 	return apiModel.MethodPost
 }
@@ -25,12 +33,6 @@ func (r *RefreshController) GetPath() string {
 
 func (r *RefreshController) RequestRequirements() *apiModel.RequestRequirements {
 	return apiModel.NewRequestRequirements(apiModel.JSONData, requests.RefreshTokenRequest{})
-}
-
-func NewRefreshController(tokenService *service.TokenService) *RefreshController {
-	return &RefreshController{
-		tokenService: tokenService,
-	}
 }
 
 func (r *RefreshController) Handle(ctx fiber.Ctx) error {

@@ -13,8 +13,11 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"zhacked.me/oxyl/shared/pkg/datasource"
+	redisModels "zhacked.me/oxyl/shared/pkg/messenger/models"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/storage"
+	"zhacked.me/oxyl/shared/pkg/variables"
 )
 
 const (
@@ -30,13 +33,14 @@ var (
 type TokenService struct {
 	parser *jwt.Parser
 
-	storage *storage.TokenStorage
+	storage   *storage.TokenStorage
+	messenger *datasource.RedisConnection
 
 	publicKey  ed25519.PublicKey
 	privateKey ed25519.PrivateKey
 }
 
-func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
+func NewTokenService(storage *storage.TokenStorage, messenger *datasource.RedisConnection) (*TokenService, error) {
 	privateKeyFile, err := os.ReadFile("/data/keys/ed25519-priv.pem")
 	if err != nil {
 		return nil, fmt.Errorf("unable to read private key file: %w", err)
@@ -76,6 +80,7 @@ func NewTokenService(storage *storage.TokenStorage) (*TokenService, error) {
 		storage:    storage,
 		publicKey:  ed25519PublicKey,
 		privateKey: ed25519PrivateKey,
+		messenger:  messenger,
 	}, nil
 }
 
@@ -184,6 +189,14 @@ func (t *TokenService) RefreshToken(ctx context.Context, refreshToken string) (*
 	err = t.storage.RevokeToken(ctx, claims.ID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to revoke refresh token: %w", err)
+	}
+
+	if claims.Type == models.TokenTypeUser {
+		if err := t.messenger.Publish(ctx, variables.RedisChannelInvalidateUser, redisModels.InvalidateUserSession{
+			UserId: claims.Identifier,
+		}); err != nil {
+			return nil, fmt.Errorf("unable to invalidate user session: %w", err)
+		}
 	}
 
 	return t.CreateToken(claims.Identifier, claims.Holder, claims.Type)

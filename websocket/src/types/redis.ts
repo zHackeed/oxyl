@@ -1,12 +1,16 @@
 export type AgentState = "ACTIVE" | "INACTIVE" | "ENROLLING" | "MAINTENANCE";
 
 export const RedisChannels = {
+  UserInvalidation: "user:invalidate",
+
   CompanyStartedListening: "company:state:listening",
   CompanyStoppedListening: "company:state:stopped-listening",
 
   CompanyAgentCreated: "company:agent:creation",
   CompanyAgentRemoved: "company:agent:removed",
   CompanyAgentStateUpdated: "company:agent:state:updated",
+
+
 } as const;
 
 
@@ -20,6 +24,11 @@ export interface CompanyStoppedListeningMessage {
 
 
 // ! -> API Events
+
+export interface UserInvalidationMessage {
+  user_id: string;
+}
+
 
 export interface AgentCreateMessage {
   company_id: string;

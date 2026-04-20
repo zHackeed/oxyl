@@ -203,7 +203,7 @@ func createServices(
 	monitoringStorage *storage.MonitoringStorage,
 	redis *datasource.RedisConnection,
 ) (*service.UserService, *service.CompanyService, *service.AgentService, *service.TokenService, *service.MetricsService, error) {
-	tokenService, err := service.NewTokenService(tokenStorage)
+	tokenService, err := service.NewTokenService(tokenStorage, redis)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}

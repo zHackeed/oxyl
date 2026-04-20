@@ -6,7 +6,6 @@ export class AuthMiddleware {
   constructor(private readonly tokenService: TokenService) {}
 
   handle = async (socket: Socket, next: (err?: ExtendedError) => void) => {
-    logger.info("incoming authentication", socket.handshake)
     const token =
       (socket.handshake.auth["token"] as string | undefined) ??
       socket.handshake.headers.authorization;

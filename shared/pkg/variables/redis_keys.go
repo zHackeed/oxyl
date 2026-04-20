@@ -11,7 +11,7 @@ const (
 type RedisKey string
 
 const (
-	// RedisChannelAgentHeartbeat RedisChannel = "agent:heartbeat"
+	RedisChannelInvalidateUser RedisChannel = "user:invalidate"
 
 	RedisChannelCompanyAddedMember     RedisChannel = "company:added_member"
 	RedisChannelCompanyRemovedMember   RedisChannel = "company:removed_member"
