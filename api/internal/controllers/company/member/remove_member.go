@@ -33,7 +33,7 @@ func (r *RemoveMemberController) GetPath() string {
 }
 
 func (r *RemoveMemberController) RequestRequirements() *apiModel.RequestRequirements {
-	return apiModel.NewRequestRequirements(apiModel.JSONData, nil)
+	return apiModel.NewRequestRequirements(apiModel.URIData, requests.RemoveMemberRequest{})
 }
 
 func (r *RemoveMemberController) Handle(ctx fiber.Ctx) error {
