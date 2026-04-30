@@ -29,11 +29,13 @@ export function WrappedViewDismissable({ children, ...props }: ViewProps) {
 
 export function WrappedViewUnsafeDismissable({ children, ...props }: ViewProps) {
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <WrappedViewContainer {...props}>{children}</WrappedViewContainer>
-    </KeyboardAvoidingView>
+    <SafeAreaViewStyled>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <WrappedViewContainer {...props}>{children}</WrappedViewContainer>
+      </KeyboardAvoidingView>
+    </SafeAreaViewStyled>
   );
 }
 

@@ -88,6 +88,10 @@ func (u *UserService) UpdatePassword(ctx context.Context, newPassword string) er
 	return u.userStorage.UpdatePassword(ctx, userId, string(hashed))
 }
 
+func (u *UserService) GetIdFromEmail(ctx context.Context, email string) (string, error) {
+	return u.userStorage.GetIdFromEmail(ctx, email)
+}
+
 func (u *UserService) GetUser(ctx context.Context) (*models.User, error) {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {

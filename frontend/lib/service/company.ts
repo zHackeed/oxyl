@@ -94,4 +94,14 @@ export const companyService = {
 
     return response.data;
   },
+
+  removeMember: async (id: string, email: string) => {
+    const response = await Caller.delete(`/company/${id}/member/${email}`);
+
+    if (response.status !== 200) {
+      throw new Error('Failed to remove member');
+    }
+
+    return response.data;
+  },
 };

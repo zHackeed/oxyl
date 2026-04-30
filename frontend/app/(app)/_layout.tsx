@@ -13,7 +13,7 @@ export default function AppLayout() {
         options={{
           presentation: 'formSheet',
           sheetCornerRadius: 24,
-          sheetAllowedDetents: [0.75],
+          sheetAllowedDetents: [0.80],
           sheetElevation: 30,
           sheetGrabberVisible: true,
           sheetShouldOverflowTopInset: false,

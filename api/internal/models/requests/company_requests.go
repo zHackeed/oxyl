@@ -4,7 +4,10 @@ import "zhacked.me/oxyl/shared/pkg/models"
 
 // todo: expand this maybe to have more information about the company.
 type CreateCompanyRequest struct {
-	DisplayName string `json:"display_name"`
+	DisplayName     string             `json:"display_name"`
+	WebhookType     models.WebhookType `json:"webhook_type"`
+	WebhookEndpoint string             `json:"webhook_endpoint"`
+	WebhookChannel  *string            `json:"webhook_channel,omitempty"`
 }
 
 // todo: validation
@@ -16,7 +19,7 @@ type AddMemberRequest struct {
 
 type RemoveMemberRequest struct {
 	CompanyId string `uri:"company_id"`
-	UserID    string `uri:"user_id"`
+	UserEmail string `json:"user_email"`
 }
 
 type ModifyThresholdRequest struct {

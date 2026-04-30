@@ -27,12 +27,13 @@ const Initials = styled(View, {
 
 export interface CompanyUserCardProps {
   member: CompanyMember;
+  onPress?: () => void;
 }
 
-export function CompanyUserCard({ member }: CompanyUserCardProps) {
+export function CompanyUserCard({ member, onPress }: CompanyUserCardProps) {
   const initials = `${member.user.name.at(0)?.toUpperCase() || 'U'}${member.user.surname.at(0)?.toUpperCase() || 'U'}`;
   return (
-    <StyledXStack>
+    <StyledXStack onPress={onPress}>
       <Initials>
         <Text fontSize="$5">{initials}</Text>
       </Initials>

@@ -81,9 +81,6 @@ export default function Account() {
           <Button size="$4" bg="$orange9" borderColor="$orange9" borderWidth={1} onPress={signOut}>
             Cerrar sesión
           </Button>
-          <Button size="$4" bg="$red9" borderColor="$red9" borderWidth={1}>
-            Deshabilitar cuenta
-          </Button>
         </YStack>
       </YStack>
     </WrappedView>

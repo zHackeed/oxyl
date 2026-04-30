@@ -29,42 +29,6 @@ const IconContainer = styled(View, {
   height: 48,
 });
 
-/*
-type MetricsAction = { type: 'ADD_METRIC'; metric: AgentCpuMetric } | { type: 'CLEAR_METRICS' };
-
-function metricsReducer(state: AgentCpuMetric[], action: MetricsAction): AgentCpuMetric[] {
-  switch (action.type) {
-    case 'ADD_METRIC':
-      console.log('reducer', action.type, 'prev length', state.length);
-      return [...state, action.metric].splice(-120);
-    case 'CLEAR_METRICS':
-      return [];
-    default:
-      return state;
-  }
-}
-const [data, dispatch] = useReducer(metricsReducer, []);
-useEffect(() => {
-  if (state !== 'ACTIVE') {
-    dispatch({ type: 'CLEAR_METRICS' });
-    return;
-  }
-
-  const socket = getSocket();
-
-  const handleCpuMetric = (agentId: string, metric: AgentCpuMetric) => {
-    if (agentId !== identifier) return;
-    dispatch({ type: 'ADD_METRIC', metric });
-  };
-
-  socket?.on('agent:metrics:cpu', handleCpuMetric);
-
-  return () => {
-    socket?.off('agent:metrics:cpu', handleCpuMetric);
-    dispatch({ type: 'CLEAR_METRICS' });
-  };
-}, [state, identifier]);
-*/
 export interface AgentCardProps {
   agent: Agent;
 }
@@ -115,50 +79,6 @@ export function AgentCard({ agent }: AgentCardProps) {
         })()}
         <ChevronRight size={18} color="$color8" />
       </XStack>
-
-      {/*state === 'ACTIVE' && (
-        <>
-          <View height={100} bg="$color4" width="100%" rounded="$4" pt="$3">
-            <CartesianChart
-              data={data}
-              xKey="timestamp"
-              yKeys={['value']}
-              domain={{ x: [Date.now() - 60_000, Date.now()], y: [0, 100] }}
-              xAxis={{
-                lineWidth: 0,
-              }}
-              yAxis={[
-                {
-                  lineWidth: 0,
-                },
-              ]}>
-              {({ points }) => {
-                return (
-                  <Line
-                    points={points.value}
-                    color="#4786e6"
-                    strokeWidth={2}
-                    curveType="monotoneX"
-                    animate={{ type: 'timing', duration: 100 }}
-                  />
-                );
-              }}
-            </CartesianChart>
-            <Badge
-              backdropFilter="blur(10px)"
-              bg="rgba(180, 180, 180, 0.2)"
-              position="absolute"
-              b={0.15}
-              l={0.16}
-              opacity={0.75}
-              m="$2"
-              borderWidth={0}
-              fontSize={12}>
-              CPU
-            </Badge>
-          </View>
-        </>
-      ) */}
     </Container>
   );
 }

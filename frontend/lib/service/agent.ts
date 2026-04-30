@@ -72,4 +72,15 @@ export const agentService = {
 
     return response.data;
   },
+
+  fetchNotifications: async (agentId: string): Promise<any | null> => {
+    const response = await Caller.get(`/agent/${agentId}/notifications`);
+    
+    if (response.status !== 200) {
+      console.error('Failed to fetch agent notifications', response);
+      return null;
+    }
+
+    return response.data;
+  }
 };

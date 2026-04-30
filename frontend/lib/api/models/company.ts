@@ -93,7 +93,6 @@ export const ThresholdMetadataMap: Record<CompanyThresholdNotificationType, Thre
 
 // The ugliest stuff you are going to see in your life
 export function isAdmin(member: CompanyMember): boolean {
-  console.log(member.permissions);
   return (
     member.permissions.includes(CompanyPermission.Owner) ||
     (member.permissions.includes(CompanyPermission.ManageCompany) &&

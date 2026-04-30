@@ -143,7 +143,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		member.NewSelfPermissionController(companyService),
 		member.NewAddMemberController(companyService),
 		member.NewListMemberController(companyService),
-		member.NewRemoveMemberController(companyService),
+		member.NewRemoveMemberController(companyService, userService),
 		threshold.NewThresholdsController(companyService),
 		threshold.NewModifyThresholdController(companyService),
 		endpoints.NewCreateEntrypointController(companyService),

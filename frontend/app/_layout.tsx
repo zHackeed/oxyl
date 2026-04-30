@@ -31,7 +31,6 @@ function RootLayourInternal() {
 
   useEffect(() => {
     if (status !== AuthStatus.LOADING) {
-      console.log('Hiding splash screen');
       SplashScreen.hideAsync();
     }
   }, [status]);
@@ -53,7 +52,6 @@ function RootLayourInternal() {
   }, [status]);
 
   if (status === AuthStatus.LOADING) {
-    console.log('Loading...');
     return null;
   }
 

@@ -10,7 +10,6 @@ type NotificationLog struct {
 	TriggerReason NotificationType `json:"trigger_reason"`
 	TriggerValue  string           `json:"trigger_value"`
 	Ack           bool             `json:"ack"`
-	Failed        bool             `json:"failed"`
 	SentAt        time.Time        `json:"sent_at"`
 }
 

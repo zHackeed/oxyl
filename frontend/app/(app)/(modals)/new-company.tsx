@@ -12,6 +12,9 @@ export default function CreateCompanyModal() {
   const { setCompany } = useCompanyFacade();
   const [registationData, setRegistationData] = useState<CreateCompanyRequest>({
     display_name: '',
+    webhook_type: 'DISCORD',
+    webhook_url: '',
+    channel: '',
   });
 
   const [errors, setErrors] = useState<Error | null>(null);
@@ -37,9 +40,30 @@ export default function CreateCompanyModal() {
       errors={errors}>
       <ModalEntry
         name="Nombre de la compañía"
-        defaultValue=""
+        defaultValue="Compañia"
         consumeValue={(value) => {
           setRegistationData({ ...registationData, display_name: value });
+        }}
+      />
+      <ModalEntry
+        name="Tipo de webhook"
+        defaultValue="Discord o Slack..."
+        consumeValue={(value) => {
+          setRegistationData({ ...registationData, webhook_type: value as 'DISCORD' | 'SLACK' });
+        }}
+      />
+      <ModalEntry
+        name="Punto de notificacion de alertas"
+        defaultValue="https://discord.com/api/webhooks/..."
+        consumeValue={(value) => {
+          setRegistationData({ ...registationData, webhook_endpoint: value });
+        }}
+      />
+      <ModalEntry
+        name="Canal de notificaciones"
+        defaultValue="123456789"
+        consumeValue={(value) => {
+          setRegistationData({ ...registationData, webhook_channel: value });
         }}
       />
     </BaseModal>

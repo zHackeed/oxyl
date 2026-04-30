@@ -52,7 +52,6 @@ export default function Agent() {
             size={24}
             color="$orange8"
             onPress={() => {
-              console.log('Navigating to info page');
               push({
                 pathname: '/agent/[id]/info',
                 params: {

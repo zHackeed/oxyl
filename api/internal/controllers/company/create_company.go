@@ -39,7 +39,7 @@ func (c *CreateCompanyController) Handle(ctx fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	company, err := c.companyService.CreateCompany(ctx, request.DisplayName)
+	company, err := c.companyService.CreateCompany(ctx, request.DisplayName, request.WebhookType, request.WebhookEndpoint, request.WebhookChannel)
 	if err != nil {
 		slog.Error("unable to create company", "error", err)
 		return fiber.ErrInternalServerError

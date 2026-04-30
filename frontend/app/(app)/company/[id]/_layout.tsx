@@ -36,7 +36,6 @@ export default function CompanyLayout() {
 
   useEffect(() => {
     if (!websocketConnected) return;
-    console.log("Joining company", id);
     join('company', id);
 
     return () => {

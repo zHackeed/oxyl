@@ -25,7 +25,7 @@ export const useWebsocketStore = createWithEqualityFn<WebsocketStateProps>()((se
     const token = useAuthStore.getState().token;
     if (!token) return;
 
-    _socket = io("http://10.0.60.5:19977", {
+    _socket = io("http://10.0.60.4:19977", {
       auth: (cb) => cb({ token: useAuthStore.getState().token?.token || "" }),
       path: "/ws",
       autoConnect: true,

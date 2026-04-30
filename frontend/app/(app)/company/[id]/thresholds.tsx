@@ -36,7 +36,6 @@ const Thresholds = () => {
         <ScrollView rounded="$7" mb="$8">
           <YStack gap="$4">
             {validThresholds?.map((threshold) => (
-              console.log(data),
               <ThresholdCard
                 key={threshold.threshold_id}
                 type={threshold.threshold_id}

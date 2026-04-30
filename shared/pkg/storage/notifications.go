@@ -27,7 +27,7 @@ func (s *NotificationStorage) Insert(ctx context.Context, identifier, agentID st
 
 func (s *NotificationStorage) GetByAgent(ctx context.Context, agentID string) ([]*models.NotificationLog, error) {
 	rows, err := s.conn.Pool().Query(ctx,
-		`SELECT identifier, agent, trigger_reason, trigger_value, ack, failed, sent_at
+		`SELECT identifier, agent, trigger_reason, trigger_value, ack, sent_at
          FROM agent_notification_logs
          WHERE agent = $1
          ORDER BY sent_at DESC`,
@@ -41,27 +41,11 @@ func (s *NotificationStorage) GetByAgent(ctx context.Context, agentID string) ([
 	var logs []*models.NotificationLog
 	for rows.Next() {
 		l := new(models.NotificationLog)
-		if err := rows.Scan(&l.Identifier, &l.Agent, &l.TriggerReason, &l.TriggerValue, &l.Ack, &l.Failed, &l.SentAt); err != nil {
+		if err := rows.Scan(&l.Identifier, &l.Agent, &l.TriggerReason, &l.TriggerValue, &l.Ack, &l.SentAt); err != nil {
 			return nil, err
 		}
 		logs = append(logs, l)
 	}
 
 	return logs, rows.Err()
-}
-
-func (s *NotificationStorage) Ack(ctx context.Context, identifier string) error {
-	_, err := s.conn.Pool().Exec(ctx,
-		`UPDATE agent_notification_logs SET ack = true WHERE identifier = $1`,
-		identifier,
-	)
-	return err
-}
-
-func (s *NotificationStorage) MarkFailed(ctx context.Context, identifier string) error {
-	_, err := s.conn.Pool().Exec(ctx,
-		`UPDATE agent_notification_logs SET failed = true WHERE identifier = $1`,
-		identifier,
-	)
-	return err
 }

@@ -16,11 +16,13 @@ var _ apiModel.Registrable = (*RemoveMemberController)(nil)
 
 type RemoveMemberController struct {
 	companyService *service.CompanyService
+	userService    *service.UserService
 }
 
-func NewRemoveMemberController(companyService *service.CompanyService) *RemoveMemberController {
+func NewRemoveMemberController(companyService *service.CompanyService, userService *service.UserService) *RemoveMemberController {
 	return &RemoveMemberController{
 		companyService: companyService,
+		userService:    userService,
 	}
 }
 
@@ -29,11 +31,11 @@ func (r *RemoveMemberController) GetMethod() apiModel.HttpMethod {
 }
 
 func (r *RemoveMemberController) GetPath() string {
-	return "/company/:company_id/member/:user_id"
+	return "/company/:company_id/member/"
 }
 
 func (r *RemoveMemberController) RequestRequirements() *apiModel.RequestRequirements {
-	return apiModel.NewRequestRequirements(apiModel.URIData, requests.RemoveMemberRequest{})
+	return apiModel.NewRequestRequirements(apiModel.MixedData, requests.RemoveMemberRequest{})
 }
 
 func (r *RemoveMemberController) Handle(ctx fiber.Ctx) error {
@@ -42,7 +44,12 @@ func (r *RemoveMemberController) Handle(ctx fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	if err := r.companyService.RemoveUserFromCompany(ctx, request.CompanyId, request.UserID); err != nil {
+	userId, err := r.userService.GetIdFromEmail(ctx, request.UserEmail)
+	if err != nil {
+		return fiber.ErrNotFound
+	}
+
+	if err := r.companyService.RemoveUserFromCompany(ctx, request.CompanyId, userId); err != nil {
 		switch {
 		case errors.Is(err, storage.ErrMemberNotFound):
 			return fiber.ErrNotFound

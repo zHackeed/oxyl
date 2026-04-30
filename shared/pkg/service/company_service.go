@@ -35,7 +35,7 @@ func NewCompanyService(
 	}
 }
 
-func (c *CompanyService) CreateCompany(ctx context.Context, displayName string) (*models.Company, error) {
+func (c *CompanyService) CreateCompany(ctx context.Context, displayName string, webhookType models.WebhookType, webhookEndpoint string, webhookChannel *string) (*models.Company, error) {
 	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
 	if !found {
 		return nil, models.ErrPermissionDenied
@@ -45,6 +45,16 @@ func (c *CompanyService) CreateCompany(ctx context.Context, displayName string) 
 	if err != nil {
 		return nil, fmt.Errorf("unable to create company: %w", err)
 	}
+
+	model.NotificationEndpoints = make([]*models.CompanyNotificationSettings, 0)
+	model.NotificationThresholds = make(map[models.NotificationType]int)
+
+	model.NotificationEndpoints = append(model.NotificationEndpoints, &models.CompanyNotificationSettings{
+		ID:          ulid.Make().String(),
+		WebhookType: webhookType,
+		Endpoint:    webhookEndpoint,
+		Channel:     webhookChannel,
+	})
 
 	if err := c.companyStorage.CreateCompany(ctx, model); err != nil {
 		return nil, fmt.Errorf("unable to create company: %w", err)
@@ -181,6 +191,10 @@ func (c *CompanyService) RemoveUserFromCompany(ctx context.Context, companyId, t
 	targetMembership, err := c.companyStorage.GetCompanyMembership(ctx, targetId, companyId)
 	if err != nil {
 		return err
+	}
+
+	if targetId == userId {
+		return models.ErrPermissionDenied
 	}
 
 	if targetMembership.Permission == models.CompanyPermissionOwner {

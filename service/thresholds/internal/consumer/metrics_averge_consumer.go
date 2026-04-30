@@ -165,6 +165,7 @@ func (m *MetricsAverageConsumer) evaluate(
 		}
 
 		return m.redis.Publish(ctx, variables.RedisChannelThresholdNotification, redisModels.ThresholdNotification{
+			Identifier:    identifier,
 			AgentID:       agentID,
 			TriggerReason: reason,
 			TriggerValue:  fmt.Sprintf("%.2f", value),

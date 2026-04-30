@@ -14,7 +14,7 @@ import (
 var _ apiModel.Registrable = (*ListController)(nil)
 
 type ListController struct {
-	 agentService *service.AgentService
+	agentService *service.AgentService
 }
 
 func NewListController(agentService *service.AgentService) *ListController {
@@ -28,7 +28,7 @@ func (l ListController) GetMethod() apiModel.HttpMethod {
 }
 
 func (l ListController) GetPath() string {
-	return "/company/:id/notifications"
+	return "/agent/:id/notifications"
 }
 
 func (l ListController) RequestRequirements() *apiModel.RequestRequirements {
@@ -44,7 +44,7 @@ func (l ListController) Handle(ctx fiber.Ctx) error {
 	logs, err := l.agentService.GetNotificationLogs(ctx, request.AgentId)
 
 	if err != nil {
-		switch  {
+		switch {
 		case errors.Is(err, storage.ErrAgentNotEnrolled):
 			return fiber.ErrExpectationFailed
 		case errors.Is(err, storage.ErrAgentNotFound):

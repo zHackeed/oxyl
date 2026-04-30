@@ -38,7 +38,6 @@ export default function StartEnrollment() {
     const socket = getSocket();
     if (!socket) return;
     socket.on('agent:state:update', (newState: AgentState) => {
-      console.log('agent state update', newState);
       if (agent?.status !== newState) {
         setStatus(newState);
         setTimeout(() => {
