@@ -1,4 +1,3 @@
-
 export enum CompanyPermission {
   View = 1,              // 00000001
   ManageAgents = 2,      // 00000010

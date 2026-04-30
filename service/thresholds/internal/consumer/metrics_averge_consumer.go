@@ -132,9 +132,12 @@ func (m *MetricsAverageConsumer) check(ctx context.Context, agentID string) {
 	}
 
 	for _, metric := range networkMetrics {
+		rxMbps := (metric.AvgRXRate * 8) / 1_000_000
+		txMbps := (metric.AvgTXRate * 8) / 1_000_000
+
 		m.evaluate(ctx, agentID, comm.NotificationTypeAgentNetworkUsageThreshold,
-			metric.AvgRXRate,
-			companyThresholds.ExceedsNetwork(metric.AvgRXRate, metric.AvgTXRate),
+			rxMbps,
+			companyThresholds.ExceedsNetwork(rxMbps, txMbps),
 		)
 	}
 }
@@ -147,6 +150,7 @@ func (m *MetricsAverageConsumer) evaluate(
 	exceeded bool,
 ) error {
 	key := thresholdActiveKey(agentID, reason)
+	slog.Info("metric", "agentID", agentID, "reason", reason, "value", value, "exceeded", exceeded, "key", key)
 
 	if exceeded {
 		identifier := ulid.Make().String()
@@ -160,7 +164,7 @@ func (m *MetricsAverageConsumer) evaluate(
 			m.redis.UpdateTTL(ctx, key, 2*time.Minute)
 		}
 
-		return m.redis.Publish(ctx, "notifications:thresholds", redisModels.ThresholdNotification{
+		return m.redis.Publish(ctx, variables.RedisChannelThresholdNotification, redisModels.ThresholdNotification{
 			AgentID:       agentID,
 			TriggerReason: reason,
 			TriggerValue:  fmt.Sprintf("%.2f", value),
@@ -178,7 +182,7 @@ func (m *MetricsAverageConsumer) evaluate(
 		return nil
 	}
 
-	return m.redis.Publish(ctx, "notifications:thresholds", redisModels.ThresholdNotification{
+	return m.redis.Publish(ctx, variables.RedisChannelThresholdNotification, redisModels.ThresholdNotification{
 		Identifier:    identifier,
 		AgentID:       agentID,
 		TriggerReason: reason,

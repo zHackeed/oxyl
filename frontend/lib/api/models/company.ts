@@ -5,6 +5,7 @@ export interface Company {
   id: string;
   display_name: string;
   holder: string; // Company  holder <-> user
+  nodes: number;
   limit_nodes: number;
 }
 
@@ -19,7 +20,7 @@ export const CompanyThresholdNotificationType = {
   AgentMemoryUsageThreshold: 'AGENT_MEMORY_USAGE_THRESHOLD',
   AgentDiskUsageThreshold: 'AGENT_DISK_USAGE_THRESHOLD',
   AgentDiskHealthThreshold: 'AGENT_DISK_HEALTH_THRESHOLD',
-  AgentNetworkThreshold: 'AGENT_NETWORK_THRESHOLD',
+  AgentNetworkThreshold: 'AGENT_NETWORK_USAGE_THRESHOLD',
 } as const;
 
 export type CompanyThresholdNotificationType =
@@ -58,6 +59,7 @@ export interface ThresholdMetadata {
   label: string;
   description: string;
   color: GetThemeValueForKey<`color`>;
+  limit?: number;
 }
 
 export const ThresholdMetadataMap: Record<CompanyThresholdNotificationType, ThresholdMetadata> = {
@@ -84,12 +86,14 @@ export const ThresholdMetadataMap: Record<CompanyThresholdNotificationType, Thre
   [CompanyThresholdNotificationType.AgentNetworkThreshold]: {
     label: 'Uso de red',
     description: 'Limite de uso aceptable medio de red (TX/RX)',
+    limit: 1000,
     color: '$blue9',
   },
 } as const;
 
 // The ugliest stuff you are going to see in your life
 export function isAdmin(member: CompanyMember): boolean {
+  console.log(member.permissions);
   return (
     member.permissions.includes(CompanyPermission.Owner) ||
     (member.permissions.includes(CompanyPermission.ManageCompany) &&

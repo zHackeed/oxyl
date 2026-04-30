@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -10,10 +9,13 @@ import (
 )
 
 type CompanyNotificationSettings struct {
-	WebhookType string          `json:"webhook_type"`
-	EndpointUrl string          `json:"endpoint"`
-	MetaKeys    json.RawMessage `json:"metakeys"`
+	ID          string      `json:"id"`
+	Holder      string      `json:"holder"`
+	WebhookType WebhookType `json:"webhook_type"`
+	Endpoint    string      `json:"endpoint"`
+	Channel     *string     `json:"channel,omitempty"`
 }
+
 type CompanyMember struct {
 	UserID     string            `json:"user_id"`
 	Permission CompanyPermission `json:"permission"`
@@ -29,6 +31,8 @@ type Company struct {
 
 	DisplayName string `json:"display_name"`
 	Holder      string `json:"holder"` // Immutable
+
+	Nodes int `json:"nodes"`
 
 	LimitNodes int  `json:"limit_nodes"`
 	Enabled    bool `json:"enabled"`
@@ -129,7 +133,7 @@ func (c *Company) RemoveNotificationEndpoint(endpoint *CompanyNotificationSettin
 	defer c.notificationSettingsMu.Unlock()
 
 	for i, e := range c.NotificationEndpoints {
-		if e.EndpointUrl == endpoint.EndpointUrl {
+		if e.ID == endpoint.ID {
 			c.NotificationEndpoints = append(c.NotificationEndpoints[:i], c.NotificationEndpoints[i+1:]...)
 			break
 		}

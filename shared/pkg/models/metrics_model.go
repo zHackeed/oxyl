@@ -7,7 +7,7 @@ import (
 
 type AgentGeneralMetrics struct {
 	When        time.Time `json:"when,omitempty"`
-	CPUUsage    uint64    `json:"cpu_usage"`
+	CPUUsage    float64   `json:"cpu_usage"`
 	MemoryUsage uint64    `json:"memory_usage"`
 	Uptime      uint64    `json:"uptime"`
 }
@@ -18,9 +18,10 @@ func NewGeneralMetrics(cpuUsage uint64, memoryUsage uint64, uptime uint64) (*Age
 	}
 
 	return &AgentGeneralMetrics{
-		CPUUsage:    cpuUsage,
+		CPUUsage:    float64(cpuUsage),
 		MemoryUsage: memoryUsage,
 		Uptime:      uptime,
+		When:        time.Now(),
 	}, nil
 }
 
@@ -38,6 +39,7 @@ func NewMountPointMetrics(mountPoint string, diskUsage uint64) (*AgentMountPoint
 	return &AgentMountPointMetrics{
 		MountPoint: mountPoint,
 		DiskUsage:  diskUsage,
+		When:       time.Now(),
 	}, nil
 }
 
@@ -79,6 +81,8 @@ func NewAgentPhysicalDiskMetrics(
 		agent.PendingSectors = *pendingSectors
 	}
 
+	agent.When = time.Now()
+
 	return agent, nil
 }
 
@@ -118,6 +122,8 @@ func NewAgentNetworkMetrics(ifName string, rxBytes, txBytes, rxPackets, txPacket
 
 		RxPacketRate: rxPacketRate,
 		TxPacketRate: txPacketRate,
+
+		When: time.Now(),
 	}, nil
 }
 
@@ -149,9 +155,9 @@ func NewAgentMetrics(agentId string,
 		return nil, errors.New("mount metrics cannot be empty")
 	}
 
-	if len(physicalDiskMetrics) == 0 {
-		return nil, errors.New("physical disk metrics cannot be empty")
-	}
+	//if len(physicalDiskMetrics) == 0 {
+	//	return nil, errors.New("physical disk metrics cannot be empty")
+	//}
 
 	if len(networkMetrics) == 0 {
 		return nil, errors.New("network metrics cannot be empty")

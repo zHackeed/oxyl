@@ -10,18 +10,17 @@ WORKDIR /workspace
 COPY .git ./
 
 COPY api/go.* ./api/
+COPY shared/go.* ./shared/
 COPY go.* ./
-COPY shared ./shared/
 
-RUN sed -i 's|./ingress||g' go.work && sed -i 's|./agent||g' go.work && sed -i 's|./protocol||g' go.work && go mod download
+RUN go work edit -dropuse=./agent -dropuse=./ingress -dropuse=./protocol -dropuse=./service/thresholds -dropuse=./service/notifications && go mod download
 
 COPY api ./api
+COPY shared ./shared
 
 RUN go generate ./shared/pkg/version/version.go && go build -o /workspace/build/oxyl-api-server ./api/main.go
 
 FROM alpine:latest
-
-# copy curl for healthcheck
 
 COPY --from=builder /workspace/build/oxyl-api-server /oxyl-api-server
 

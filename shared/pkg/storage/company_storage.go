@@ -12,9 +12,11 @@ import (
 )
 
 var (
-	ErrCompanyNotFound     = errors.New("company not found")
-	ErrMemberAlreadyExists = errors.New("member already exists")
-	ErrMemberNotFound      = errors.New("member not found")
+	ErrCompanyNotFound              = errors.New("company not found")
+	ErrMemberAlreadyExists          = errors.New("member already exists")
+	ErrMemberNotFound               = errors.New("member not found")
+	ErrNotificationEndpointNotFound = errors.New("notification endpoint not found")
+	ErrDiscordChannelRequired       = errors.New("channel is required for Discord")
 )
 
 type CompanyStorage struct {
@@ -55,9 +57,9 @@ func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Comp
 		}
 	}
 
-	sql = `INSERT INTO company_notification_settings (holder, webhook_type, endpoint, metakeys) VALUES ($1, $2, $3, $4)`
+	sql = `INSERT INTO company_notification_settings (id, holder, webhook_type, endpoint, channel) VALUES ($1, $2, $3, $4, $5)`
 	for _, endpoint := range company.NotificationEndpoints {
-		if _, err := tx.Exec(ctx, sql, company.ID, endpoint.WebhookType, endpoint.EndpointUrl, endpoint.MetaKeys); err != nil {
+		if _, err := tx.Exec(ctx, sql, endpoint.ID, company.ID, endpoint.WebhookType, endpoint.Endpoint, endpoint.Channel); err != nil {
 			return fmt.Errorf("unable to create company notification settings: %w", err)
 		}
 	}
@@ -67,6 +69,20 @@ func (c *CompanyStorage) CreateCompany(ctx context.Context, company *models.Comp
 	}
 
 	return nil
+}
+
+func (c *CompanyStorage) GetCountOfAgentsInCompany(ctx context.Context, companyID string) (int, error) {
+	sql := `SELECT COUNT(id) FROM AGENTS WHERE holder = $1`
+
+	row := c.conn.Pool().QueryRow(ctx, sql, companyID)
+
+	var count int
+
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("unable to get count of agents in company: %w", err)
+	}
+
+	return count, nil
 }
 
 func (c *CompanyStorage) GetCompany(ctx context.Context, companyID string) (*models.Company, error) {
@@ -87,6 +103,13 @@ func (c *CompanyStorage) GetCompany(ctx context.Context, companyID string) (*mod
 	company.Members = make(map[string]*models.CompanyMember)
 	company.NotificationEndpoints = make([]*models.CompanyNotificationSettings, 0)
 	company.NotificationThresholds = make(map[models.NotificationType]int)
+
+	nodes, err := c.GetCountOfAgentsInCompany(ctx, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get count of agents in company: %w", err)
+	}
+
+	company.Nodes = nodes
 
 	return &company, nil
 }
@@ -132,6 +155,14 @@ func (c *CompanyStorage) GetCompaniesOfUser(ctx context.Context, userID string) 
 		if err := rows.Scan(&company.ID, &company.DisplayName, &company.Holder, &company.LimitNodes, &company.Enabled, &company.CreatedAt); err != nil {
 			return nil, fmt.Errorf("unable to get companies of user: %w", err)
 		}
+
+		nodes, err := c.GetCountOfAgentsInCompany(ctx, company.ID)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get count of agents in company: %w", err)
+		}
+
+		company.Nodes = nodes
+
 		companies = append(companies, &company)
 	}
 
@@ -161,30 +192,6 @@ func (c *CompanyStorage) GetCompanyMembership(ctx context.Context, userID, compa
 	}, nil
 }
 
-func (c *CompanyStorage) GetNotificationEndpointsOfCompany(ctx context.Context, companyID string) ([]*models.CompanyNotificationSettings, error) {
-	sql := `SELECT webhook_type, endpoint, metakeys FROM company_notification_settings WHERE holder = $1`
-	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get company notification endpoints: %w", err)
-	}
-
-	defer rows.Close()
-	var endpoints []*models.CompanyNotificationSettings
-	for rows.Next() {
-		var endpoint models.CompanyNotificationSettings
-		if err := rows.Scan(&endpoint.WebhookType, &endpoint.EndpointUrl, &endpoint.MetaKeys); err != nil {
-			return nil, fmt.Errorf("unable to get company notification endpoints: %w", err)
-		}
-		endpoints = append(endpoints, &endpoint)
-	}
-
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("unable to get company notification endpoints: %w", rows.Err())
-	}
-
-	return endpoints, nil
-}
-
 func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, userId, companyID string, permission int) error {
 	sql := `INSERT INTO company_members (user_id, company_id, permission_bitwise) VALUES ($1, $2, $3)`
 	if _, err := c.conn.Pool().Exec(ctx, sql, userId, companyID, permission); err != nil {
@@ -200,7 +207,7 @@ func (c *CompanyStorage) AddMemberToCompany(ctx context.Context, userId, company
 }
 
 func (c *CompanyStorage) GetMembersOfCompany(ctx context.Context, companyID string) ([]*models.CompanyMemberComposite, error) {
-	sql := `SELECT u.name, u.surname, u.email, cm.permission_bitwise, created_at FROM company_members as cm INNER JOIN users u on cm.user_id = u.id WHERE cm.company_id=$1`
+	sql := `SELECT u.name, u.surname, u.email, cm.permission_bitwise, cm.created_at FROM company_members as cm INNER JOIN users u on cm.user_id = u.id WHERE cm.company_id=$1`
 
 	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
 	if err != nil {
@@ -241,24 +248,6 @@ func (c *CompanyStorage) RemoveMemberFromCompany(ctx context.Context, companyID,
 
 // Todo: rethink this
 
-func (c *CompanyStorage) AddNotificationEndpointToCompany(ctx context.Context, companyID string, endpoint *models.CompanyNotificationSettings) error {
-	sql := `INSERT INTO company_notification_settings (holder, webhook_type, endpoint, metakeys) VALUES ($1, $2, $3, $4)`
-	if _, err := c.conn.Pool().Exec(ctx, sql, companyID, endpoint.WebhookType, endpoint.EndpointUrl, endpoint.MetaKeys); err != nil {
-		return fmt.Errorf("unable to add notification endpoint to company: %w", err)
-	}
-
-	return nil
-}
-
-func (c *CompanyStorage) RemoveNotificationEndpointFromCompany(ctx context.Context, companyID string, endpoint *models.CompanyNotificationSettings) error {
-	sql := `DELETE FROM company_notification_settings WHERE holder = $1 AND endpoint = $2`
-	if _, err := c.conn.Pool().Exec(ctx, sql, companyID, endpoint.EndpointUrl); err != nil {
-		return fmt.Errorf("unable to remove notification endpoint from company: %w", err)
-	}
-
-	return nil
-}
-
 func (c *CompanyStorage) GetNotificationThresholdsOfCompany(ctx context.Context, companyID string) (map[models.NotificationType]int, error) {
 	sql := `SELECT notification_type, value FROM company_notification_thresholds WHERE holder = $1`
 	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
@@ -290,12 +279,91 @@ func (c *CompanyStorage) SetNotificationThresholdForCompany(ctx context.Context,
 
 	return nil
 }
-
-// Todo: might use enable bool?
 func (c *CompanyStorage) DeleteCompany(ctx context.Context, companyID string) error {
 	sql := `DELETE FROM companies WHERE id = $1`
 	if _, err := c.conn.Pool().Exec(ctx, sql, companyID); err != nil {
 		return fmt.Errorf("unable to delete company: %w", err)
+	}
+
+	return nil
+}
+
+// -- Notifications --
+func (c *CompanyStorage) GetNotificationEndpointsOfCompany(ctx context.Context, companyID string) ([]*models.CompanyNotificationSettings, error) {
+	sql := `SELECT id, holder, webhook_type, endpoint, channel FROM company_notification_settings WHERE holder = $1`
+	rows, err := c.conn.Pool().Query(ctx, sql, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get company notification endpoints: %w", err)
+	}
+
+	defer rows.Close()
+
+	var endpoints []*models.CompanyNotificationSettings
+	for rows.Next() {
+		endpoint := new(models.CompanyNotificationSettings)
+		if err := rows.Scan(&endpoint.ID, &endpoint.Holder, &endpoint.WebhookType, &endpoint.Endpoint, &endpoint.Channel); err != nil {
+			return nil, fmt.Errorf("unable to scan company notification endpoint: %w", err)
+		}
+		endpoints = append(endpoints, endpoint)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("unable to get company notification endpoints: %w", err)
+	}
+
+	return endpoints, nil
+}
+
+func (c *CompanyStorage) GetNotificationEndpoint(ctx context.Context, id, companyID string) (*models.CompanyNotificationSettings, error) {
+	sql := `SELECT id, holder, webhook_type, endpoint, channel FROM company_notification_settings WHERE id = $1 AND holder = $2`
+
+	endpoint := new(models.CompanyNotificationSettings)
+	err := c.conn.Pool().QueryRow(ctx, sql, id, companyID).Scan(
+		&endpoint.ID, &endpoint.Holder, &endpoint.WebhookType, &endpoint.Endpoint, &endpoint.Channel,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotificationEndpointNotFound
+		}
+		return nil, fmt.Errorf("unable to get notification endpoint: %w", err)
+	}
+
+	return endpoint, nil
+}
+
+func (c *CompanyStorage) AddNotificationEndpointToCompany(ctx context.Context, companyID string, endpoint *models.CompanyNotificationSettings) error {
+	if endpoint.WebhookType == models.WebhookTypeDiscord && (endpoint.Channel == nil || *endpoint.Channel == "") {
+		return ErrDiscordChannelRequired
+	}
+
+	sql := `INSERT INTO company_notification_settings (id, holder, webhook_type, endpoint, channel) VALUES ($1, $2, $3, $4, $5)`
+	if _, err := c.conn.Pool().Exec(ctx, sql, endpoint.ID, companyID, endpoint.WebhookType, endpoint.Endpoint, endpoint.Channel); err != nil {
+		return fmt.Errorf("unable to add notification endpoint to company: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CompanyStorage) UpdateNotificationEndpoint(ctx context.Context, companyID string, endpoint *models.CompanyNotificationSettings) error {
+	if endpoint.WebhookType == models.WebhookTypeDiscord && (endpoint.Channel == nil || *endpoint.Channel == "") {
+		return ErrDiscordChannelRequired
+	}
+
+	sql := `UPDATE company_notification_settings SET webhook_type = $1, endpoint = $2, channel = $3 WHERE id = $4 AND holder = $5`
+	if _, err := c.conn.Pool().Exec(ctx, sql, endpoint.WebhookType, endpoint.Endpoint, endpoint.Channel, endpoint.ID, companyID); err != nil {
+		return fmt.Errorf("unable to update notification endpoint: %w", err)
+	}
+
+	return nil
+}
+
+func (c *CompanyStorage) RemoveNotificationEndpointFromCompany(ctx context.Context, companyID, id string) error {
+	sql := `DELETE FROM company_notification_settings WHERE id = $1 AND holder = $2`
+	if _, err := c.conn.Pool().Exec(ctx, sql, id, companyID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotificationEndpointNotFound
+		}
+		return fmt.Errorf("unable to remove notification endpoint from company: %w", err)
 	}
 
 	return nil

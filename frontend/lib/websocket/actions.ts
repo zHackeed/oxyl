@@ -1,4 +1,6 @@
-import { Agent } from "../api/models/agent";
+import { Agent, AgentState } from "../api/models/agent";
+import { Company, CompanyPermission } from "../api/models/company";
+import { AgentMetricEntry } from "../api/models/metrics";
 
 export type RoomType = "company" | "agent";
 
@@ -8,12 +10,22 @@ export interface UserSocketReq {
 }
 
 export interface CompanyUpdateActions {
-  "agent:creation": (agent: Agent) => void;
-  //"agent:update": (agentId: string, state: AgentStatus) => void;
-  "agent:deletion": (agent: string) => void;
+  // ----------> Company wide related events
+  "company:agent:creation": (agent: Agent) => void;
+  "company:agent:update": (agentId: string, state: AgentState) => void;
+  "company:agent:deletion": (agentId: string) => void;
 
-  "user:add": (userId: string) => void;
-  "user:remove": (userId: string) => void;
+  // ----------> Company Member related events
+  "company:member:added": (userId: string, permissions: CompanyPermission[]) => void;
+  "company:member:removed": (userId: string) => void;
+
+  // ----------> Personal company events
+  "company:added": (company: Company) => void;
+  "company:removed": (companyId: string) => void;
+
+  // ----------> Agent room related events
+  "agent:state:update": (state: AgentState) => void;
+  "agent:metric:append": (metric: AgentMetricEntry) => void;
 }
 
 // :thinking:  

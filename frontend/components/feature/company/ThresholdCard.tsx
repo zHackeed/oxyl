@@ -19,9 +19,10 @@ const Container = styled(YStack, {
 export interface ThresholdCardProps {
   type: CompanyThresholdNotificationType;
   value: number;
+  limit?: number
 }
 
-export default function ThresholdCard({ type, value }: ThresholdCardProps) {
+export default function ThresholdCard({ type, value, limit }: ThresholdCardProps) {
   const { activeCompany } = useCompanyFacade();
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentValue, setCurrentValue] = useState<number>(value);
@@ -68,9 +69,9 @@ export default function ThresholdCard({ type, value }: ThresholdCardProps) {
       </XStack>
 
       <Text color="$color10" fontWeight="500">
-        {currentValue}%
+        {currentValue} {limit ? `/${limit}` : '%'}
       </Text>
-      <Slider defaultValue={[value]} onValueChange={handleValueChange} max={100} step={1}>
+      <Slider defaultValue={[value]} onValueChange={handleValueChange} max={limit || 100} step={1}>
         <Slider.Track backgroundColor="$gray9">
           <Slider.TrackActive backgroundColor={thresholdMetadata.color} />
         </Slider.Track>

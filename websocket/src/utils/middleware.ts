@@ -15,7 +15,10 @@ export abstract class Middleware {
       if (event !== this._eventName) return next();
       const result = await this.validate(userConnection, ...args);
 
-      if (result instanceof Error) return next(result);
+      if (result instanceof Error) {
+        console.log("middleware error", result);
+        return next(result);
+      }
       next();
     });
   }

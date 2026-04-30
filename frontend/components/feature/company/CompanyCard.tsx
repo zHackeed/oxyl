@@ -1,5 +1,5 @@
 import { Company } from '@/lib/api/models/company';
-import { useCompanyFacade } from '@/store/company/userCompanyFacade';
+import { useCompanyStore } from '@/store/company/useCompanyStore';
 import { Building2, ChevronRight } from '@tamagui/lucide-icons-2';
 import { useRouter } from 'expo-router';
 import { View, Text, XStack, YStack, styled } from 'tamagui';
@@ -26,18 +26,20 @@ const IconStyle = styled(View, {
   p: '$3',
   bg: '$color4',
   rounded: '$3',
-  borderColor: '#4a4a4a',
+  borderColor: '$gray4',
   borderWidth: 1,
 });
 
 export function CompanyCard({ company }: CompanyCardProps) {
   const router = useRouter();
-  const { setCompany } = useCompanyFacade();
   return (
     <StyledXStack
       onPress={() => {
-        setCompany(company);
-        router.push('/(company)');
+        useCompanyStore.setState({ company });
+        router.push({
+          pathname: '/(app)/company/[id]',
+          params: { id: company.id },
+        });
       }}>
       <IconStyle>
         <Building2 size={16} color="$color8" />
@@ -48,9 +50,8 @@ export function CompanyCard({ company }: CompanyCardProps) {
           {company.display_name}
         </Text>
         <XStack items="center" gap="$1">
-          <View bg="$green9" width={6} height={6} rounded="$10" mr="$1" />
           <Text fontSize="$2" color="$color9">
-            X / {company.limit_nodes} agents
+            {company.nodes} / {company.limit_nodes} agents
           </Text>
         </XStack>
       </YStack>

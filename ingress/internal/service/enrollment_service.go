@@ -88,9 +88,10 @@ func (e *EnrollmentService) GetEnrollmentToken(ctx context.Context, req *enrollm
 	slog.Info("enrollment token generated", slog.String("agent_id", agentId))
 	slog.Info("enrich data", slog.String("agent_id", agentId), slog.Any("data", data))
 
-	if err := e.messenger.Publish(ctx, variables.RedisChannelAgentEnrollment, redisModels.AgentEnrollment{
-		AgentId:      agentId,
-		EnrollmentId: signedToken,
+	if err := e.messenger.Publish(ctx, variables.RedisChannelAgentStateUpdate, redisModels.AgentStateUpdate{
+		CompanyHolder: agent.Holder,
+		AgentId:       agentId,
+		Status:        models.AgentStatusActive,
 	}); err != nil {
 		slog.Error("unable to publish agent enrollment event", "error", err)
 	}

@@ -45,26 +45,26 @@ func HasPermission(currentPermissions CompanyPermission, required CompanyPermiss
 
 func (p CompanyPermission) StringifiedPermissions() []string {
 	var parts []string
-	if p&CompanyPermissionManageWebhooks != 0 {
-		parts = append(parts, "manage_webhooks")
-	}
-	if p&CompanyPermissionManageThresholds != 0 {
-		parts = append(parts, "manage_thresholds")
-	}
-	if p&CompanyPermissionManageMembers != 0 {
-		parts = append(parts, "manage_members")
-	}
-	if p&CompanyPermissionManageCompany != 0 {
-		parts = append(parts, "manage_company")
+
+	if p&CompanyPermissionView != 0 {
+		parts = append(parts, "view")
 	}
 	if p&CompanyPermissionManageAgents != 0 {
 		parts = append(parts, "manage_agents")
 	}
-	if p&CompanyPermissionView != 0 {
-		parts = append(parts, "view")
+	if p&CompanyPermissionManageCompany != 0 {
+		parts = append(parts, "manage_company")
 	}
-
-	if p&CompanyPermissionOwner != 0 {
+	if p&CompanyPermissionManageMembers != 0 {
+		parts = append(parts, "manage_members")
+	}
+	if p&CompanyPermissionManageThresholds != 0 {
+		parts = append(parts, "manage_thresholds")
+	}
+	if p&CompanyPermissionManageWebhooks != 0 {
+		parts = append(parts, "manage_webhooks")
+	}
+	if p == CompanyPermissionOwner {
 		parts = append(parts, "owner")
 	}
 

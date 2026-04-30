@@ -3,14 +3,13 @@ import { ModalEntry } from '@/components/feature/modals/ModalEntry';
 import { CreateAgentRequest } from '@/lib/api/requests/agent';
 import { agentService } from '@/lib/service/agent';
 import { useCompanyFacade } from '@/store/company/userCompanyFacade';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 export default function CreateNewAgent() {
   const { activeCompany } = useCompanyFacade();
   const router = useRouter();
-  //const queryClient = useQueryClient();
 
   const [registerData, setRegisterData] = useState<CreateAgentRequest>({
     holder: activeCompany!.id,
@@ -22,7 +21,6 @@ export default function CreateNewAgent() {
   const registerProcessor = useMutation({
     mutationFn: () => agentService.create(registerData),
     onSuccess: () => {
-      //queryClient.invalidateQueries({ queryKey: ['company-agents'] });
       router.dismiss();
     },
     onError: (error) => {

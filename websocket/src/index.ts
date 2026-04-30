@@ -7,6 +7,8 @@ import type { CompanyUpdateActions, SocketMetadata, UserSocketReq } from "./type
 import { CompanyMiddleware } from "./middleware/companyMiddleware.js";
 import { CompanyService } from "./service/companyService.js";
 import { UserInvalidationService } from "./service/invalidationService.js";
+import { AgentMiddleware } from "./middleware/agentMiddleware.js";
+import { AgentService } from "./service/agentService.js";
 
 const io = new Server<
   UserSocketReq,
@@ -30,10 +32,11 @@ await redisMessenger.connect();
 new UserInvalidationService(io, redisMessenger);
 
 const companyMiddleware = new CompanyMiddleware('join');
+const agentMiddleware = new AgentMiddleware('join');
 const tokenService = await TokenService.create("/data/keys");
 const authMiddleware = new AuthMiddleware(tokenService);
 const companyService = new CompanyService(redisMessenger, io);
-
+const agentService = new AgentService(redisMessenger, io);
 
 io.use(authMiddleware.handle);
 io.on("connection", (socket) => {
@@ -43,6 +46,7 @@ io.on("connection", (socket) => {
   socket.join(`user:${userId}`);
 
   companyMiddleware.register(socket);
+  agentMiddleware.register(socket);
 
   socket.on("join", (type, id) => {
     logger.info("user has requested to join", type, id);
@@ -51,7 +55,7 @@ io.on("connection", (socket) => {
         companyService.addListener(id, socket);
         break;
       case "agent":
-        //todo: agent logic
+        agentService.addListener(id, socket);
         break;
     }
   });
@@ -63,17 +67,18 @@ io.on("connection", (socket) => {
         companyService.removeListener(id, socket);
         break;
       case "agent":
-        //todo: agent logic
+        agentService.removeListener(id, socket);
         break;
     }
   });
 
-  
   socket.on("disconnecting", (reason) => {
     logger.info("User is disconnecting", socket.id, reason);
     socket.rooms.forEach((room) => {
       if (room.startsWith("company:")) {
         companyService.removeListener(room.replace("company:", ""), socket);
+      } else if (room.startsWith("agent:")) {
+        agentService.removeListener(room.replace("agent:", ""), socket);
       }
     });
   });

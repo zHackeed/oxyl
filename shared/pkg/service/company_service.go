@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/oklog/ulid/v2"
 	"zhacked.me/oxyl/shared/pkg/datasource"
 	redisModels "zhacked.me/oxyl/shared/pkg/messenger/models"
 	"zhacked.me/oxyl/shared/pkg/models"
@@ -243,7 +244,90 @@ func (c *CompanyService) SetNotificationThreshold(ctx context.Context, companyId
 	if err := c.messenger.Publish(ctx, variables.RedisChannelCompanyThresholdUpdate, redisModels.ThresholdUpdate{
 		CompanyId:     companyId,
 		ThresholdType: notificationType,
-		Threshold:     threshold,
+		Threshold:     float64(threshold),
+	}); err != nil {
+		slog.Error("unable to publish company update event", "error", err)
+	}
+
+	return nil
+}
+
+func (c *CompanyService) GetNotificationEndpoints(ctx context.Context, companyId string) ([]*models.CompanyNotificationSettings, error) {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return nil, models.ErrPermissionDenied
+	}
+
+	membership, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)
+	if err != nil {
+		return nil, err
+	}
+
+	allowed := models.HasPermission(membership.Permission, models.CompanyPermissionView)
+	if !allowed {
+		return nil, models.ErrPermissionDenied
+	}
+
+	return c.companyStorage.GetNotificationEndpointsOfCompany(ctx, companyId)
+}
+
+func (c *CompanyService) AddNotificationEndpoint(ctx context.Context, companyId string, endpoint *models.CompanyNotificationSettings) (*models.CompanyNotificationSettings, error) {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return nil, models.ErrPermissionDenied
+	}
+
+	membership, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)
+	if err != nil {
+		return nil, err
+	}
+
+	allowed := models.HasPermission(membership.Permission, models.CompanyPermissionManageWebhooks)
+	if !allowed {
+		return nil, models.ErrPermissionDenied
+	}
+
+	endpoint.ID = ulid.Make().String()
+	endpoint.Holder = companyId
+
+	if err := c.companyStorage.AddNotificationEndpointToCompany(ctx, companyId, endpoint); err != nil {
+		return nil, fmt.Errorf("unable to add notification endpoint: %w", err)
+	}
+
+	if err := c.messenger.Publish(ctx, variables.RedisChannelCompanyWebhookCreate, redisModels.CompanyWebhookCreation{
+		Endpoint: endpoint.ID,
+	}); err != nil {
+		slog.Error("unable to publish company update event", "error", err)
+	}
+
+	return endpoint, nil
+}
+
+func (c *CompanyService) RemoveNotificationEndpoint(ctx context.Context, companyId, endpointId string) error {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return models.ErrPermissionDenied
+	}
+
+	membership, err := c.companyStorage.GetCompanyMembership(ctx, userId, companyId)
+	if err != nil {
+		return err
+	}
+
+	allowed := models.HasPermission(membership.Permission, models.CompanyPermissionManageWebhooks)
+	if !allowed {
+		return models.ErrPermissionDenied
+	}
+
+	if err := c.companyStorage.RemoveNotificationEndpointFromCompany(ctx, companyId, endpointId); err != nil {
+		if errors.Is(err, storage.ErrNotificationEndpointNotFound) {
+			return storage.ErrNotificationEndpointNotFound
+		}
+		return fmt.Errorf("unable to remove notification endpoint: %w", err)
+	}
+
+	if err := c.messenger.Publish(ctx, variables.RedisChannelCompanyWebhookDelete, redisModels.CompanyWebhookDeletion{
+		Endpoint: endpointId,
 	}); err != nil {
 		slog.Error("unable to publish company update event", "error", err)
 	}

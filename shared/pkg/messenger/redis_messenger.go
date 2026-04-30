@@ -23,11 +23,16 @@ type handlerEntry interface {
 	handle(ctx context.Context, payload []byte) error
 }
 
-func NewPubSubRouter(redis *datasource.RedisConnection) *PubSubRouter {
-	return &PubSubRouter{
-		listener: redis,
-		handlers: make(map[variables.RedisChannel]handlerEntry),
+func NewPubSubRouter() (*PubSubRouter, error) {
+	listener, err := datasource.NewRedisConnection()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to redis. %w", err)
 	}
+
+	return &PubSubRouter{
+		listener: listener,
+		handlers: make(map[variables.RedisChannel]handlerEntry),
+	}, nil
 }
 
 func RegisterHandler[T any](router *PubSubRouter, interceptor Interceptor[T]) {
@@ -35,6 +40,9 @@ func RegisterHandler[T any](router *PubSubRouter, interceptor Interceptor[T]) {
 	// Thank you, golang limitations.
 	adapter := &interceptorAdapter[T]{inner: interceptor}
 	router.handlers[interceptor.GetChannel()] = adapter
+
+	slog.Info("registered handler", "channel", interceptor.GetChannel())
+	slog.Info("handlers", "count", len(router.handlers), "channels", router.handlers, "type", fmt.Sprintf("%T", adapter))
 }
 
 func (r *PubSubRouter) Run(ctx context.Context) error {
@@ -66,8 +74,11 @@ func (r *PubSubRouter) Run(ctx context.Context) error {
 			continue
 		}
 
+		slog.Info("received message", "channel", redisMsg.Channel, "payload", redisMsg.Payload)
+
 		h, ok := r.handlers[variables.RedisChannel(redisMsg.Channel)]
 		if !ok {
+			slog.Warn("no handler for channel", "channel", redisMsg.Channel)
 			continue
 		}
 
@@ -86,4 +97,10 @@ func (r *PubSubRouter) handleMessage(ctx context.Context, h handlerEntry, payloa
 	if err := h.handle(ctx, []byte(payload)); err != nil {
 		slog.Error("error handling message", "channel", h.getChannel(), "error", err)
 	}
+}
+
+func (r *PubSubRouter) Close() error {
+	_ = r.listener.Close()
+	r.inProcess.Wait()
+	return nil
 }

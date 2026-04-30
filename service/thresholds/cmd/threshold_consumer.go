@@ -91,6 +91,7 @@ func registerInterceptors(router *messenger.PubSubRouter, thresholdProvider *pro
 	messenger.RegisterHandler[models.CompanyDeletion](router, interceptors.NewCompanyDeletionInterceptor(thresholdProvider))
 	messenger.RegisterHandler[models.AgentDelete](router, interceptors.NewAgentRemovalInterceptor(agentProvider))
 	messenger.RegisterHandler[models.ThresholdUpdate](router, interceptors.NewThresholdUpdateInterceptor(thresholdProvider))
+	messenger.RegisterHandler[models.AgentStateUpdate](router, interceptors.NewAgentStateInterceptor(agentProvider))
 }
 
 func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *datasource.RedisConnection, *messenger.PubSubRouter, error) {

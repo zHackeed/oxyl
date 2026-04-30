@@ -44,7 +44,7 @@ func init() {
 	agentCmd.PersistentFlags().StringVarP(&refreshEndpoint, "refresh-endpoint", "r", "https://api.oxyl.zhacked.me/agent/auth/refresh", "Refresh endpoint")
 	agentCmd.PersistentFlags().StringVarP(&shutdownEndpoint, "shutdown-endpoint", "s", "https://api.oxyl.zhacked.me/agent/auth/shutdown", "Shutdown endpoint")
 
-	if err := agentCmd.MarkFlagRequired("id"); err != nil {
+	if err := agentCmd.MarkPersistentFlagRequired("id"); err != nil {
 		slog.Error("failed to mark flag required", "error", err)
 		os.Exit(1)
 	}

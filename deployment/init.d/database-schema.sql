@@ -4,7 +4,6 @@
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'webhook_type') THEN
         CREATE TYPE webhook_type AS ENUM (
-            'WEBHOOK',
             'DISCORD',
             'SLACK'
         );
@@ -80,13 +79,15 @@ CREATE TABLE IF NOT EXISTS company_members(
 );
 
 CREATE TABLE IF NOT EXISTS company_notification_settings(
-    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id varchar(26) PRIMARY KEY,
     holder varchar(26) NOT NULL,
-    webhook_type webhook_type NOT NULL DEFAULT 'WEBHOOK',
-    endpoint varchar(255) NOT NULL,
-    metakeys jsonb, /* This will hold the metakeys for the notification, the body that needs to be sent. */
 
-    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE
+    webhook_type webhook_type NOT NULL DEFAULT 'SLACK',
+    endpoint varchar(255) NOT NULL,
+    channel varchar(255), -- slack does not have channels
+
+    FOREIGN KEY (holder) REFERENCES companies(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE (holder, webhook_type, endpoint, channel)
 );
 
 CREATE TABLE IF NOT EXISTS company_notification_thresholds(

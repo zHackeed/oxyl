@@ -6,4 +6,6 @@ use (
 	./shared
 	./protocol
 	./ingress
+	./service/thresholds
+	./service/notifications
 )

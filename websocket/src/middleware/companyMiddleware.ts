@@ -26,7 +26,6 @@ export class CompanyMiddleware extends Middleware {
     if (!userId) return new Error("User ID is required");
 
     const permissions = await getPermissionsInCompany(id, userId);
-    logger.info(permissions)
     if (!permissions) return new Error("User does not have permission in this company");
 
     if (!hasPermission(permissions, CompanyPermission.View))

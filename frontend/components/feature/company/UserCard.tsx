@@ -41,13 +41,14 @@ export function CompanyUserCard({ member }: CompanyUserCardProps) {
           <Text fontWeight="bold" fontSize={18} flex={1}>
             {member.user.name} {member.user.surname}
           </Text>
+
           {isAdmin(member) ? (
             <Badge borderColor="$orange8" bg="$orange6">
               Admin
             </Badge>
           ) : (
             <Badge borderColor="$blue8" bg="$blue6">
-              User
+              Miembro
             </Badge>
           )}
         </XStack>

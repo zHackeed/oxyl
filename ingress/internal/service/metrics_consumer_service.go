@@ -4,30 +4,53 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	protocolV1 "zhacked.me/oxyl/protocol/v1"
 	"zhacked.me/oxyl/protocol/v1/monitoring"
+	"zhacked.me/oxyl/shared/pkg/datasource"
+	redisMessage "zhacked.me/oxyl/shared/pkg/messenger/models"
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/storage"
 	"zhacked.me/oxyl/shared/pkg/utils"
+	"zhacked.me/oxyl/shared/pkg/variables"
 )
 
 type MetricsConsumerService struct {
 	// todo: metrics storage
 
 	metricsStorage *storage.MonitoringStorage
+	messenger      *datasource.RedisConnection
+
+	activeListenerMu sync.RWMutex
+	activeListeners  map[string]bool
 
 	protocolV1.UnimplementedMonitoringServiceServer
 }
 
 var _ protocolV1.MonitoringServiceServer = (*MetricsConsumerService)(nil)
 
-func NewMetricsConsumerService(metricStorage *storage.MonitoringStorage) *MetricsConsumerService {
+func NewMetricsConsumerService(metricStorage *storage.MonitoringStorage, redis *datasource.RedisConnection) *MetricsConsumerService {
 	return &MetricsConsumerService{
-		metricsStorage: metricStorage,
+		metricsStorage:  metricStorage,
+		messenger:       redis,
+		activeListeners: make(map[string]bool),
 	}
+}
+
+func (m *MetricsConsumerService) AddListener(agentId string) {
+	m.activeListenerMu.Lock()
+	m.activeListeners[agentId] = true
+	m.activeListenerMu.Unlock()
+}
+
+func (m *MetricsConsumerService) RemoveListener(agentId string) {
+	m.activeListenerMu.Lock()
+	delete(m.activeListeners, agentId)
+	m.activeListenerMu.Unlock()
 }
 
 func (m *MetricsConsumerService) SendMetrics(ctx context.Context, in *monitoring.AgentMetrics) (*monitoring.AgentMetricsResponse, error) {
@@ -40,6 +63,10 @@ func (m *MetricsConsumerService) SendMetrics(ctx context.Context, in *monitoring
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to convert general metrics: %s", err.Error()))
 	}
+
+	m.activeListenerMu.RLock()
+	_, listening := m.activeListeners[agentId]
+	m.activeListenerMu.RUnlock()
 
 	convertedMountPointMetrics := make([]*models.AgentMountPointMetrics, 0)
 	convertedPhysicalDiskMetrics := make([]*models.AgentPhysicalDiskMetrics, 0)
@@ -85,11 +112,26 @@ func (m *MetricsConsumerService) SendMetrics(ctx context.Context, in *monitoring
 		return nil, status.Error(codes.Internal, "failed to insert metrics")
 	}
 
-	// todo: send response if they are listening on the socket
+	if listening {
+		m.notifyListener(ctx, agentId, convertedGeneralData, convertedMountPointMetrics, convertedNetworkMetrics)
+	}
 
-	slog.Info("metrics registered", slog.String("agent_id", agentId))
+	m.messenger.SetAny(ctx, fmt.Sprintf(string(variables.RedisKeyHeartbeat), agentId), "1", 2*time.Minute)
+
+	//slog.Info("metrics registered", slog.String("agent_id", agentId))
 
 	return &monitoring.AgentMetricsResponse{
 		Success: true,
 	}, nil
+}
+
+func (m *MetricsConsumerService) notifyListener(ctx context.Context, agentId string, generalMetrics *models.AgentGeneralMetrics, mountedMetrics []*models.AgentMountPointMetrics, networkMetrics []*models.AgentNetworkMetrics) {
+	if err := m.messenger.Publish(ctx, variables.RedisChannelAgentMetrics, redisMessage.AgentMetricEntry{
+		AgentId:        agentId,
+		GeneralMetrics: generalMetrics,
+		MountedMetrics: mountedMetrics,
+		NetworkMetrics: networkMetrics,
+	}); err != nil {
+		slog.Error("failed to publish metrics", slog.String("agent_id", agentId), slog.String("error", err.Error()))
+	}
 }

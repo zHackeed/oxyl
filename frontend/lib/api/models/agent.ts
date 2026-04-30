@@ -1,8 +1,13 @@
+
+type AgentState = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'ENROLLING';
+
 interface Agent {
   id: string;
   display_name: string;
   registered_ip: string;
   metadata?: AgentMetadata;
+  status: AgentState;
+  last_handshake?: number;
 }
 
 interface AgentMetadata {
@@ -20,4 +25,10 @@ interface AgentPartitions {
   raid_level?: string;
 }
 
-export { Agent, AgentMetadata, AgentPartitions };
+
+type AgentCpuMetric = {
+  timestamp: number;
+  value: number
+}
+
+export { Agent, AgentMetadata, AgentPartitions, AgentState, AgentCpuMetric };

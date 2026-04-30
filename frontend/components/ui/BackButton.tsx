@@ -19,7 +19,7 @@ export function BackButton({ onPress }: BackButtonProps) {
       gap="$1"
       items="center">
       <ChevronLeft color="#FF7856" size={24} />
-      <Text color="#FF7856">Volver</Text>
+      <Text color="#FF7856" fontSize={18}>Volver</Text>
     </XStack>
   );
 }

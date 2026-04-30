@@ -11,7 +11,7 @@ type AgentCreation struct {
 	DisplayName  string `json:"display_name"`
 }
 
-type AgentUpdate struct {
+type AgentStateUpdate struct {
 	CompanyHolder string             `json:"company_holder"`
 	AgentId       string             `json:"agent_id"`
 	Status        models.AgentStatus `json:"status"`
@@ -25,4 +25,15 @@ type AgentDelete struct {
 type AgentEnrollment struct {
 	AgentId      string `json:"agent_id"`
 	EnrollmentId string `json:"enrollment_id"`
+}
+
+type AgentListening struct {
+	AgentId string `json:"agent"`
+}
+
+type AgentMetricEntry struct {
+	AgentId        string                           `json:"agent_id"`
+	GeneralMetrics *models.AgentGeneralMetrics      `json:"general_metrics"`
+	MountedMetrics []*models.AgentMountPointMetrics `json:"mounted_metrics"`
+	NetworkMetrics []*models.AgentNetworkMetrics    `json:"network_metrics"`
 }

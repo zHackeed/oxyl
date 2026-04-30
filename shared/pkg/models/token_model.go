@@ -11,11 +11,11 @@ import (
 type Token struct {
 	Identifier string `json:"identifier"`
 
-	//this can be nil if the token is not bound to a specific company, and it is not from a user
-	Holder *string `json:"holder,omitempty"`
+	// ? this can be nil if the token is not bound to a specific company, and it is not from a user
+	Holder *string      `json:"holder,omitempty"`
 	Type   JWTTokenType `json:"type"`
 
-	jwt.RegisteredClaims 
+	jwt.RegisteredClaims
 }
 
 func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token, error) {
@@ -38,7 +38,7 @@ func NewToken(identifier string, holder *string, tokenType JWTTokenType) (*Token
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        ulid.Make().String(),
 			Audience:  []string{"https://api.oxyl.zhacked.me", "https://ingress.oxyl.zhacked.me"},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "oxyl",
 		},

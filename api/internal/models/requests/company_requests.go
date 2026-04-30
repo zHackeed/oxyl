@@ -25,6 +25,18 @@ type ModifyThresholdRequest struct {
 	Threshold        int                     `json:"threshold" validate:"required,numeric"`
 }
 
+type CreateEndpointRequest struct {
+	CompanyId   string             `uri:"id" validate:"required,alphanum"`
+	WebhookType models.WebhookType `json:"type" validate:"required,oneof=DISCORD SLACK "`
+	Endpoint    string             `json:"endpoint" validate:"required,uri"`
+	Channel     *string            `json:"channel,omitempty" validate:"omitempty,number"`
+}
+
+type DeleteEndpointRequest struct {
+	CompanyId  string `uri:"id" validate:"required,alphanum"`
+	EndpointId string `uri:"entrypoint" validate:"required,alphanum"`
+}
+
 type CompanyIdUri struct {
 	CompanyId string `uri:"id" uri:"company_id" validate:"required,alphanum"`
 }

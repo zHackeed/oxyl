@@ -10,8 +10,11 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"zhacked.me/oxyl/ingress/internal/interceptor"
+	agentListener "zhacked.me/oxyl/ingress/internal/messenger"
 	"zhacked.me/oxyl/shared/pkg/datasource"
 	"zhacked.me/oxyl/shared/pkg/logger"
+	"zhacked.me/oxyl/shared/pkg/messenger"
+	"zhacked.me/oxyl/shared/pkg/messenger/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 	"zhacked.me/oxyl/shared/pkg/storage"
 
@@ -44,7 +47,7 @@ func startNexus(cmd *cobra.Command, _ []string) {
 	initCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	timescale, redis, err := createDatabases(initCtx)
+	timescale, redis, redisMessenger, err := createDatabases(initCtx)
 	if err != nil {
 		slog.Error("unable to create databases", "error", err)
 		return
@@ -55,11 +58,15 @@ func startNexus(cmd *cobra.Command, _ []string) {
 			slog.Error("unable to close redis connection", "error", err)
 		}
 
+		if err := redisMessenger.Close(); err != nil {
+			slog.Error("unable to close pubsub router", "error", err)
+		}
+
 		timescale.Close()
 	}()
 
-	companyStorage, agentStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
-	agentService, tokenService, err := createServices(redis, companyStorage, agentStorage, tokenStorage)
+	companyStorage, agentStorage, notificationStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
+	agentService, tokenService, err := createServices(redis, companyStorage, agentStorage, notificationStorage, tokenStorage)
 
 	if err != nil {
 		slog.Error("unable to create services", "error", err)
@@ -76,7 +83,19 @@ func startNexus(cmd *cobra.Command, _ []string) {
 	defer agentEnrollmentInterceptor.Close()
 
 	enrollmentService := serviceV1.NewEnrollmentService(redis, agentService, tokenService)
-	metricsConsumerService := serviceV1.NewMetricsConsumerService(monitoringStorage)
+	metricsConsumerService := serviceV1.NewMetricsConsumerService(monitoringStorage, redis)
+
+	messenger.RegisterHandler[models.AgentListening](
+		redisMessenger, agentListener.NewAddListenerInterceptor(metricsConsumerService))
+
+	messenger.RegisterHandler[models.AgentListening](
+		redisMessenger, agentListener.NewRemoveListenerInterceptor(metricsConsumerService))
+
+	go func() {
+		if err := redisMessenger.Run(cmd.Context()); err != nil {
+			slog.Error("unable to run pubsub router", "error", err)
+		}
+	}()
 
 	lis, err := net.Listen("tcp", ":19988")
 	if err != nil {
@@ -109,33 +128,39 @@ func startNexus(cmd *cobra.Command, _ []string) {
 	slog.Info("ingress server stopped")
 }
 
-func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *datasource.RedisConnection, error) {
+func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *datasource.RedisConnection, *messenger.PubSubRouter, error) {
 	timescale, err := datasource.NewTimescaleConnection(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to connect: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to connect: %w", err)
 	}
 
 	redis, err := datasource.NewRedisConnection()
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to connect: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to connect: %w", err)
 	}
 
-	return timescale, redis, nil
+	redisMessenger, err := messenger.NewPubSubRouter()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("unable to connect: %w", err)
+	}
+
+	return timescale, redis, redisMessenger, nil
 }
 
 func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (
-	*storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage, *storage.MonitoringStorage,
+	*storage.CompanyStorage, *storage.AgentStorage, *storage.NotificationStorage, *storage.TokenStorage, *storage.MonitoringStorage,
 ) {
 	return storage.NewCompanyStorage(timescale),
 		storage.NewAgentStorage(timescale),
+		storage.NewNotificationStorage(timescale),
 		storage.NewTokenStorage(redis),
 		storage.NewMonitoringStorage(timescale)
 }
 
-func createServices(messenger *datasource.RedisConnection, companyStorage *storage.CompanyStorage, agentStorage *storage.AgentStorage, tokenStorage *storage.TokenStorage) (
+func createServices(messenger *datasource.RedisConnection, companyStorage *storage.CompanyStorage, agentStorage *storage.AgentStorage, notificationStorage *storage.NotificationStorage, tokenStorage *storage.TokenStorage) (
 	*service.AgentService, *service.TokenService, error,
 ) {
-	agentService := service.NewAgentService(messenger, companyStorage, agentStorage)
+	agentService := service.NewAgentService(messenger, companyStorage, agentStorage, notificationStorage)
 
 	tokenService, err := service.NewTokenService(tokenStorage, messenger)
 	if err != nil {

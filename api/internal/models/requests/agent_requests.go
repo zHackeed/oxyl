@@ -29,5 +29,5 @@ type AuthenticationShutdownRequest struct {
 
 type AgentMetricsRequest struct {
 	AgentId  string `uri:"id" validate:"required,alphanum"`
-	Interval string `uri:"interval" validate:"required,oneof=1m 5m 15m 1h 1d"` // todo: change to enum
+	Interval string `uri:"interval" validate:"required,oneof=15m 1h 6h 1d 7d"` // todo: change to enum
 }

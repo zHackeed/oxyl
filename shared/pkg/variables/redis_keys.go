@@ -11,19 +11,33 @@ const (
 type RedisKey string
 
 const (
+	RedisKeyHeartbeat       RedisKey = "agent:heartbeat:%s"
+	RedisKeyThresholdActive RedisKey = "agent:thresholds:active:%s:%s"
+
 	RedisChannelInvalidateUser RedisChannel = "user:invalidate"
 
-	RedisChannelCompanyAddedMember     RedisChannel = "company:added_member"
-	RedisChannelCompanyRemovedMember   RedisChannel = "company:removed_member"
-	RedisChannelCompanyThresholdUpdate RedisChannel = "company:threshold_update"
-	RedisChannelCompanyDeletion        RedisChannel = "company:deletion"
+	RedisChannelCompanyCreation        RedisChannel = "company:creation"
+	RedisChannelCompanyAddedMember     RedisChannel = "company:member:add"
+	RedisChannelCompanyRemovedMember   RedisChannel = "company:member:remove"
+	RedisChannelCompanyThresholdUpdate RedisChannel = "company:threshold:update"
 
-	RedisChannelAgentCreation   RedisChannel = "company:agent:creation"
+	RedisChannelCompanyWebhookCreate RedisChannel = "company:webhook:create"
+	RedisChannelCompanyWebhookDelete RedisChannel = "company:webhook:delete"
+
+	RedisChannelCompanyDeletion RedisChannel = "company:deletion"
+
+	RedisChannelThresholdNotification RedisChannel = "agent:threshold:notification"
+
+	RedisChannelAgentCreation RedisChannel = "company:agent:creation"
+	RedisChannelAgentDeletion RedisChannel = "company:agent:deletion"
+
+	RedisChannelAgentStateUpdate RedisChannel = "agent:state:update"
+
+	RedisChannelAgentListening        RedisChannel = "agent:viewer:listening"
+	RedisChannelAgentStoppedListening RedisChannel = "agent:viewer:deafen"
+
 	RedisChannelAgentEnrollment RedisChannel = "agent:enrollment"
-	RedisChannelAgentUpdate     RedisChannel = "company:agent:update"
-	RedisChannelAgentDeletion   RedisChannel = "company:agent:deletion"
-	RedisChannelAgentHeartbeat  RedisChannel = "agent:heartbeat"
-	RedisChannelAgentMetrics    RedisChannel = "agent:metrics"
+	RedisChannelAgentMetrics    RedisChannel = "agent:viewer:metric:append"
 )
 
 type RedisChannel string

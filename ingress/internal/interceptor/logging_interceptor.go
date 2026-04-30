@@ -34,6 +34,6 @@ func (l *LoggingInterceptor) Intercept(ctx context.Context, req interface{}, inf
 		args = append(args, slog.String("agent", agent))
 	}
 
-	slog.Info("request invoked", args...)
+	//slog.Info("request invoked", args...)
 	return handler(ctx, req)
 }

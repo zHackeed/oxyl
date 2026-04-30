@@ -16,10 +16,10 @@ export default function GlobalHeader({ title, description, icon }: HeaderProps) 
         {icon && icon}
       </XStack>
 
-      <Text mt="$2" fontSize="$2" fontWeight={'400'} color="$color7" pb="$4">
+      <Text mt="$2" fontSize="$2" fontWeight={'400'} color="$gray11" pb="$4">
         {description}
       </Text>
-      <Separator borderColor="$gray12" mt="$2" mb="$2" />
+      <Separator borderColor="$gray4" mt="$2" mb="$2" />
     </YStack>
   );
 }

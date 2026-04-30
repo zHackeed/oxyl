@@ -1,4 +1,4 @@
-package company
+package threshold
 
 import (
 	"errors"

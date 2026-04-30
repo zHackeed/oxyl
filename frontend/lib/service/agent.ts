@@ -1,5 +1,6 @@
 import { Caller } from '../api/api';
 import { Agent } from '../api/models/agent';
+import { AgentMetricsResponse } from '../api/models/metrics';
 import { CreateAgentRequest } from '../api/requests/agent';
 import { createAgentSchemaValidator } from '../validators/agent';
 
@@ -18,6 +19,19 @@ export const agentService = {
       console.error('Failed to fetch agents', error);
       return null;
     }
+  },
+
+  getOne: async (agentId: string): Promise<Agent | null> => {
+    const response = await Caller.get(`/agent/${agentId}`);
+
+    if (response.status !== 200) {
+      console.error('Failed to fetch agent', response);
+      return null;
+    }
+
+    console.log(response.data);
+
+    return response.data as Agent;
   },
 
   create: async (agent: CreateAgentRequest): Promise<Agent | null> => {
@@ -41,5 +55,21 @@ export const agentService = {
     } catch (error) {
       return Promise.reject(error);
     }
+  },
+
+  fetchAgentMetrics: async (
+    agentId: string,
+    interval: string
+  ): Promise<AgentMetricsResponse | null> => {
+    const response = await Caller.get<AgentMetricsResponse>(
+      `/agent/${agentId}/metrics/${interval}`
+    );
+
+    if (response.status !== 200) {
+      console.error('Failed to fetch agent metrics', response);
+      return null;
+    }
+
+    return response.data;
   },
 };

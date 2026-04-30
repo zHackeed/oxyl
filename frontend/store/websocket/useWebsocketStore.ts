@@ -21,12 +21,11 @@ export interface WebsocketStateProps {
 
 export const useWebsocketStore = createWithEqualityFn<WebsocketStateProps>()((set) => ({
   connected: false,
-
   connect: () => {
     const token = useAuthStore.getState().token;
     if (!token) return;
 
-    _socket = io("http://127.0.0.1:19977", {
+    _socket = io("http://10.0.60.5:19977", {
       auth: (cb) => cb({ token: useAuthStore.getState().token?.token || "" }),
       path: "/ws",
       autoConnect: true,
@@ -72,6 +71,7 @@ export const useWebsocketStore = createWithEqualityFn<WebsocketStateProps>()((se
 
   join: (type: RoomType, id: string) => {
     _subscriptions.add(`${type}|${id}`)
+    console.log("joining", type, id)
     _socket?.emit("join", type, id);
   },
 

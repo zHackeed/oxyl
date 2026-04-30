@@ -3,7 +3,6 @@ package models
 type WebhookType string
 
 const (
-	WebhookTypeWebhook WebhookType = "WEBHOOK"
 	WebhookTypeDiscord WebhookType = "DISCORD"
 	WebhookTypeSlack   WebhookType = "SLACK"
 )
@@ -21,6 +20,25 @@ const (
 	NotificationTypeAgentDiskHealthThreshold   NotificationType = "AGENT_DISK_HEALTH_THRESHOLD"
 	NotificationTypeAgentNetworkUsageThreshold NotificationType = "AGENT_NETWORK_USAGE_THRESHOLD"
 )
+
+var notificationTypeNames = map[NotificationType]string{
+	NotificationTypeCompanySettingUpdate: "Actualización de configuración de empresa",
+	NotificationTypeCompanyMemberUpdate:  "Actualización de miembro de empresa",
+
+	NotificationTypeAgentStatusUpdate:          "Actualización de estado del agente",
+	NotificationTypeAgentCpuUsageThreshold:     "Umbral de uso de CPU",
+	NotificationTypeAgentMemoryUsageThreshold:  "Umbral de uso de memoria",
+	NotificationTypeAgentDiskUsageThreshold:    "Umbral de uso de disco",
+	NotificationTypeAgentDiskHealthThreshold:   "Umbral de salud del disco",
+	NotificationTypeAgentNetworkUsageThreshold: "Umbral de uso de red",
+}
+
+func (t NotificationType) Stringified() string {
+	if name, ok := notificationTypeNames[t]; ok {
+		return name
+	}
+	return string(t)
+}
 
 func NotificationTypes() []NotificationType {
 	return []NotificationType{

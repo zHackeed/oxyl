@@ -4,29 +4,29 @@ import { createWithEqualityFn } from 'zustand/traditional';
 //Todo: rethink if we really need this?
 
 export interface CompanyState {
-  selectedCompany: Company | null;
-  companyPermission: CompanyPermission[] | null;
+  company: Company | null;
+  permissions: CompanyPermission[] | null;
   setCompany: (company: Company | null) => void;
-  setCompanyPermissions: (permissions: CompanyPermission[] | null) => void;
+  setPermissions: (permissions: CompanyPermission[] | null) => void;
 }
 
-const initalState = {
-  selectedCompany: null,
-  companyPermission: null,
+const initialState = {
+  company: null,
+  permissions: null,
 };
 
 export const useCompanyStore = createWithEqualityFn<CompanyState>((set) => ({
-  ...initalState,
+  ...initialState,
   setCompany: (company: Company | null) => {
     set((state) => ({
       ...state,
-      selectedCompany: company,
+      company: company,
     }));
   },
-  setCompanyPermissions: (permissions: CompanyPermission[] | null) => {
+  setPermissions: (permissions: CompanyPermission[] | null) => {
     set((state) => ({
       ...state,
-      companyPermission: permissions,
+      permissions: permissions,
     }));
   },
 }));

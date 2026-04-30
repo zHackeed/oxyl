@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/ashwanthkumar/slack-go-webhook v0.0.0-20200209025033-430dd4e66960 // indirect
+	github.com/gtuk/discordwebhook v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/moul/http2curl v1.0.0 // indirect
 	github.com/parnurzeal/gorequest v0.3.0 // indirect

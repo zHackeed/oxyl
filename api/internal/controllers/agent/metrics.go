@@ -3,7 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"time"
+	"log/slog"
 
 	"github.com/gofiber/fiber/v3"
 	apiModel "zhacked.me/oxyl/api/internal/models"
@@ -11,6 +11,7 @@ import (
 	"zhacked.me/oxyl/shared/pkg/models"
 	"zhacked.me/oxyl/shared/pkg/service"
 	"zhacked.me/oxyl/shared/pkg/storage"
+	"zhacked.me/oxyl/shared/pkg/utils"
 )
 
 var _ apiModel.Registrable = (*MetricsController)(nil)
@@ -43,13 +44,14 @@ func (m MetricsController) Handle(ctx fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	intervalParsed, err := time.ParseDuration(request.Interval)
+	intervalParsed, err := utils.ParseDuration(request.Interval)
 	if err != nil {
 		return fmt.Errorf("invalid interval: %w", err)
 	}
 
 	metrics, err := m.metricsService.GetMetrics(ctx, request.AgentId, intervalParsed)
 	if err != nil {
+		slog.Info(err.Error())
 		switch {
 		case errors.Is(err, models.ErrPermissionDenied):
 			return fiber.ErrForbidden

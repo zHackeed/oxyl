@@ -27,18 +27,15 @@ export class RedisMessenger {
     await Promise.all([this._subscriber.quit(), this._publisher.quit()]);
   }
 
-  async publish(topic: string, message: unknown): Promise<number> {
+  async publish<T>(topic: string, message: T): Promise<number> {
     return this._publisher.publish(topic, JSON.stringify(message));
   }
 
-  // ? todo: might have to check this. Right now the code diferences between both platforms might not handle properly the json parsing. As right now,
-  // ? we just try to do this and see if it works... lol.
   async subscribe<T>(
     topic: string,
     handler: (message: T) => void,
   ): Promise<void> {
     await this._subscriber.subscribe(topic, (message: string) => {
-      logger.info(topic, message);
       let parsed: unknown;
       try {
         parsed = JSON.parse(message);

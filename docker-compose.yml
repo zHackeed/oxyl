@@ -10,6 +10,7 @@ networks:
 
 services:
   redis:
+    container_name: oxyl-redis
     networks:
       - oxyl
     image: redis:8.6.2-alpine
@@ -31,6 +32,7 @@ services:
       timeout: 3s
       retries: 30
   database:
+    container_name: oxyl-database
     networks:
       - oxyl
     image: timescale/timescaledb:latest-pg17
@@ -50,6 +52,7 @@ services:
       timeout: 3s
       retries: 30
   init:
+    container_name: oxyl-init-data
     network_mode: none
     build:
       context: .
@@ -64,6 +67,7 @@ services:
       redis:
         condition: service_healthy
   api:
+    container_name: oxyl-api-server
     build:
       context: .
       dockerfile: ./deployment/dockerfiles/api.Dockerfile
@@ -93,6 +97,7 @@ services:
       timeout: 3s
       retries: 30
   websocket:
+    container_name: oxyl-websocket-server
     build:
       context: .
       dockerfile: ./deployment/dockerfiles/websocket.Dockerfile
@@ -117,6 +122,7 @@ services:
       api:
         condition: service_healthy
   ingress:
+    container_name: oxyl-ingress
     build:
       context: .
       dockerfile: ./deployment/dockerfiles/ingress.Dockerfile
@@ -133,6 +139,44 @@ services:
       - commons:/data
     ports:
       - "19988:19988"
+    depends_on:
+      api:
+        condition: service_healthy
+  threshold_listener:
+    container_name: oxyl-threshold-listener
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/thresholds.Dockerfile
+    networks:
+      - oxyl
+    environment:
+      REDIS_URI: ${REDIS_URI:?REDIS_URI is required}
+      TIGERDB_HOST: ${TIGERDB_HOST:?TIGERDB_HOST is required}
+      TIGERDB_PORT: ${TIGERDB_PORT:?TIGERDB_PORT is required}
+      TIGERDB_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      TIGERDB_PASS: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      TIGERDB_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    volumes:
+      - commons:/data
+    depends_on:
+      api:
+        condition: service_healthy
+  notifications:
+    container_name: oxyl-notifications-listener
+    build:
+      context: .
+      dockerfile: ./deployment/dockerfiles/notifications.Dockerfile
+    networks:
+      - oxyl
+    environment:
+      REDIS_URI: ${REDIS_URI:?REDIS_URI is required}
+      TIGERDB_HOST: ${TIGERDB_HOST:?TIGERDB_HOST is required}
+      TIGERDB_PORT: ${TIGERDB_PORT:?TIGERDB_PORT is required}
+      TIGERDB_USER: ${TIGERDB_USER:?TIGERDB_USER is required}
+      TIGERDB_PASS: ${TIGERDB_PASS:?TIGERDB_PASS is required}
+      TIGERDB_DB: ${TIGERDB_DB:?TIGERDB_DB is required}
+    volumes:
+      - commons:/data
     depends_on:
       api:
         condition: service_healthy

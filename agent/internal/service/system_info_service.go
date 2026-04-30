@@ -111,7 +111,7 @@ func (s *SystemInfoService) CaptureData() error {
 		return fmt.Errorf("unable to get memory info: %v", err)
 	}
 
-	s.totalMemory = *memInfo.MemTotal
+	s.totalMemory = *memInfo.MemTotalBytes
 
 	blockDevices, err := s.blockInfo.SysBlockDevices()
 	if err != nil {

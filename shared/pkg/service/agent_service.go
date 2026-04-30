@@ -17,19 +17,22 @@ import (
 type AgentService struct {
 	messenger *datasource.RedisConnection
 
-	companyStorage *storage.CompanyStorage
-	agentStorage   *storage.AgentStorage
+	companyStorage      *storage.CompanyStorage
+	agentStorage        *storage.AgentStorage
+	notificationStorage *storage.NotificationStorage
 }
 
 func NewAgentService(
 	messenger *datasource.RedisConnection,
 	companyStorage *storage.CompanyStorage,
 	agentStorage *storage.AgentStorage,
+	notificationStorage *storage.NotificationStorage,
 ) *AgentService {
 	return &AgentService{
-		messenger:      messenger,
-		companyStorage: companyStorage,
-		agentStorage:   agentStorage,
+		messenger:           messenger,
+		companyStorage:      companyStorage,
+		agentStorage:        agentStorage,
+		notificationStorage: notificationStorage,
 	}
 }
 
@@ -49,18 +52,24 @@ func (a *AgentService) CreateAgent(ctx context.Context, displayName, registeredI
 		return nil, models.ErrPermissionDenied
 	}
 
+	company, err := a.companyStorage.GetCompany(ctx, holder)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get company: %w", err)
+	}
+
+	if company.Nodes >= company.LimitNodes {
+		return nil, fmt.Errorf("company has reached its limit of agents")
+	}
+
 	model, err := models.NewAgent(displayName, registeredIP, holder)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create agent: %w", err)
 	}
 
-	//todo: agent company limit count handling?
-
 	if err := a.agentStorage.CreateAgent(ctx, model); err != nil {
 		return nil, fmt.Errorf("unable to save agent to storage: %w", err)
 	}
 
-	// todo: notify the users watching the interface and resort the gui on their end.
 	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentCreation, redisModels.AgentCreation{
 		CompanyId:    holder,
 		AgentId:      model.ID,
@@ -171,9 +180,10 @@ func (a *AgentService) UpdateAgentStatus(ctx context.Context, agentID string, st
 	}
 
 	// notify agent of status update
-	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentUpdate, redisModels.AgentUpdate{
-		AgentId: agentID,
-		Status:  status,
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentStateUpdate, redisModels.AgentStateUpdate{
+		CompanyHolder: agent.Holder,
+		AgentId:       agentID,
+		Status:        status,
 	}); err != nil {
 		slog.Error("unable to publish agent update event", "error", err)
 	}
@@ -201,8 +211,37 @@ func (a *AgentService) EnrichAgent(ctx context.Context, agentID string,
 	}
 
 	//todo: send agent update event to poll the agent with the data that is needed for the agent enrich interface
+	if err := a.messenger.Publish(ctx, variables.RedisChannelAgentEnrollment, redisModels.AgentEnrollment{
+		AgentId:      agentID,
+		EnrollmentId: enrollmentToken,
+	}); err != nil {
+		slog.Error("unable to publish agent enrollment event", "error", err, "agent_id", agentID)
+	}
 
 	return nil
+}
+
+func (a *AgentService) GetNotificationLogs(ctx context.Context, agentID string) ([]*models.NotificationLog, error) {
+	userId, found := utils.GetValueFromContext[string](ctx, models.ContextKeyUser)
+	if !found {
+		return nil, models.ErrPermissionDenied
+	}
+
+	agent, err := a.agentStorage.GetAgent(ctx, agentID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get agent: %w", err)
+	}
+
+	membership, err := a.companyStorage.GetCompanyMembership(ctx, userId, agent.Holder)
+	if err != nil {
+		return nil, err
+	}
+
+	if !models.HasPermission(membership.Permission, models.CompanyPermissionView) {
+		return nil, models.ErrPermissionDenied
+	}
+
+	return a.notificationStorage.GetByAgent(ctx, agentID)
 }
 
 func (a *AgentService) DeleteAgent(ctx context.Context, agentID string) error {

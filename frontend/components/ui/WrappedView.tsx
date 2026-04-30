@@ -1,13 +1,13 @@
 import { Platform } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styled, View, ViewProps } from 'tamagui';
 
 export const WrappedViewContainer = styled(View, {
   flex: 1,
   p: 10,
   pb: 20,
+  bg: '$background',
 });
 
 export const SafeAreaViewStyled = styled(SafeAreaView, {
@@ -37,10 +37,19 @@ export function WrappedViewUnsafeDismissable({ children, ...props }: ViewProps) 
   );
 }
 
+// https://github.com/AppAndFlow/react-native-safe-area-context/issues/586#issuecomment-3684244309 and https://github.com/AppAndFlow/react-native-safe-area-context/issues/689
+
 export function WrappedView({ children, ...props }: ViewProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaViewStyled>
-      <WrappedViewContainer {...props}>{children}</WrappedViewContainer>
-    </SafeAreaViewStyled>
+    <WrappedViewContainer
+      {...props}
+      style={{
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+      }}>
+      {children}
+    </WrappedViewContainer>
   );
 }

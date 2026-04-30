@@ -2,11 +2,11 @@ import { TokenService } from '../service/token';
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStoreAxiosState } from '@/store/auth/useAuthAxiosFacade';
 
-const AUTH_BASE_URL = 'http://127.0.0.1:19999/auth';
+const AUTH_BASE_URL = 'http://10.0.60.5:19999/auth';
 
 const API_CONFIG = {
   // Todo: make configurable
-  baseURL: 'http://127.0.0.1:19999/api/v1',
+  baseURL: 'http://10.0.60.5:19999/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,7 +16,7 @@ const API_CONFIG = {
 const Caller = axios.create(API_CONFIG);
 
 const AuthCaller = axios.create({
-  baseURL: 'http://127.0.0.1:19999/',
+  baseURL: 'http://10.0.60.5:19999/',
   withCredentials: false,
 });
 

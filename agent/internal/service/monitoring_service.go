@@ -26,9 +26,14 @@ type MonitoringService struct {
 	byteCounterMap map[string]uint64
 	pksCounterMap  map[string]uint64
 
-	oldCpuUsage uint64
+	oldCpuUsage *cpuUsage
 
 	v1.MonitoringServiceClient
+}
+
+type cpuUsage struct {
+	total float64
+	idle  float64
 }
 
 func NewMonitoringService(sysInfoService *SystemInfoService) (*MonitoringService, error) {
@@ -43,7 +48,6 @@ func NewMonitoringService(sysInfoService *SystemInfoService) (*MonitoringService
 
 		byteCounterMap: make(map[string]uint64),
 		pksCounterMap:  make(map[string]uint64),
-		oldCpuUsage:    9999,
 	}, nil
 }
 
@@ -76,7 +80,7 @@ func (s *MonitoringService) Consume(ctx context.Context, tickRate time.Duration)
 
 	var g errgroup.Group
 
-	g.Go(func() (err error) { generalInfo, err = s.getGeneralInfo(tickRate); return })
+	g.Go(func() (err error) { generalInfo, err = s.getGeneralInfo(); return })
 	g.Go(func() (err error) { mountPointInfo, err = s.getMountPointInfo(); return })
 	g.Go(func() (err error) { physicalDiskInfo, err = s.getPhysicalMetrics(); return })
 	g.Go(func() (err error) { networkInfo, err = s.getNetworkInfo(tickRate); return })
@@ -97,7 +101,7 @@ func (s *MonitoringService) Consume(ctx context.Context, tickRate time.Duration)
 	return nil
 }
 
-func (s *MonitoringService) getGeneralInfo(rate time.Duration) (*monitoring.GeneralMetrics, error) {
+func (s *MonitoringService) getGeneralInfo() (*monitoring.GeneralMetrics, error) {
 	timeStart := time.Now()
 	defer func() {
 		slog.Info("crawled general info", "time", time.Since(timeStart))
@@ -108,23 +112,40 @@ func (s *MonitoringService) getGeneralInfo(rate time.Duration) (*monitoring.Gene
 		return nil, fmt.Errorf("failed to get stats: %w", err)
 	}
 
-	currentCpuUsage := uint64(cpuStats.CPUTotal.User + cpuStats.CPUTotal.Nice + cpuStats.CPUTotal.System)
-
-	if s.oldCpuUsage == 9999 {
-		s.oldCpuUsage = currentCpuUsage
+	prev := s.oldCpuUsage
+	curr := &cpuUsage{
+		total: cpuStats.CPUTotal.User + cpuStats.CPUTotal.Nice + cpuStats.CPUTotal.System +
+			cpuStats.CPUTotal.Idle + cpuStats.CPUTotal.Iowait + cpuStats.CPUTotal.IRQ +
+			cpuStats.CPUTotal.SoftIRQ + cpuStats.CPUTotal.Steal,
+		idle: cpuStats.CPUTotal.Idle + cpuStats.CPUTotal.Iowait,
 	}
 
-	cpuUsage := (currentCpuUsage - s.oldCpuUsage) / uint64(rate.Seconds())
-	s.oldCpuUsage = currentCpuUsage
+	var cpuPercent float64
+	if prev != nil {
+		deltaTotal := curr.total - prev.total
+		deltaIdle := curr.idle - prev.idle
+
+		if deltaTotal > 0 {
+			cpuPercent = (deltaTotal - deltaIdle) / deltaTotal * 100
+		}
+	}
+
+	s.oldCpuUsage = curr
 
 	ramMetrics, err := s.procFs.Meminfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get memory metrics: %w", err)
 	}
 
+	slog.Info("got memory metrics", "mem", *ramMetrics.MemTotalBytes)
+	slog.Info("free", "value", *ramMetrics.MemAvailableBytes)
+	slog.Info("value", *ramMetrics.MemTotalBytes-*ramMetrics.MemAvailableBytes)
+
+	slog.Info("cpu usage", "value", cpuPercent)
+
 	return &monitoring.GeneralMetrics{
-		CpuUsage:    cpuUsage,
-		MemoryUsage: *ramMetrics.Active,
+		CpuUsage:    uint64(cpuPercent),
+		MemoryUsage: *ramMetrics.MemTotalBytes - *ramMetrics.MemAvailableBytes,
 		Uptime:      uint64(time.Now().Unix()) - cpuStats.BootTime,
 	}, nil
 }

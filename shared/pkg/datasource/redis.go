@@ -67,12 +67,33 @@ func (rc *RedisConnection) Get(ctx context.Context, key string) (string, error) 
 	return data, nil
 }
 
+func (rc *RedisConnection) GetAndDelete(ctx context.Context, key string) (string, error) {
+	value, err := rc.conn.GetDel(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	return value, nil
+}
+
 func (rc *RedisConnection) Set(ctx context.Context, key variables.RedisKey, value string, expiration time.Duration) error {
 	if len(value) == 0 {
 		return errors.New("value is empty")
 	}
 
 	return rc.conn.Set(ctx, string(key), value, expiration).Err()
+}
+
+func (rc *RedisConnection) SetAny(ctx context.Context, key string, value string, expiration time.Duration) error {
+	if len(value) == 0 {
+		return errors.New("value is empty")
+	}
+
+	return rc.conn.Set(ctx, key, value, expiration).Err()
 }
 
 func (rc *RedisConnection) Exists(ctx context.Context, key variables.RedisKey) (bool, error) {
@@ -89,8 +110,32 @@ func (rc *RedisConnection) Exists(ctx context.Context, key variables.RedisKey) (
 	return exists > 0, nil
 }
 
+func (rc *RedisConnection) ExistAny(ctx context.Context, key string) (bool, error) {
+	exists, err := rc.conn.Exists(ctx, key).Result()
+	if err != nil {
+		return false, fmt.Errorf("unable to check if redis key %q exists: %w", key, err)
+	}
+
+	return exists > 0, nil
+}
+
 func (rc *RedisConnection) Del(ctx context.Context, key variables.RedisKey) error {
 	return rc.conn.Del(ctx, string(key)).Err()
+}
+
+func (rc *RedisConnection) DelAny(ctx context.Context, keys ...string) error {
+	return rc.conn.Del(ctx, keys...).Err()
+}
+
+func (rc *RedisConnection) SetNX(ctx context.Context, key string, value string, expiration time.Duration) (string, error) {
+	return rc.conn.SetArgs(ctx, key, value, redis.SetArgs{
+		Mode: "NX",
+		TTL:  expiration,
+	}).Result()
+}
+
+func (rc *RedisConnection) UpdateTTL(ctx context.Context, key string, expiration time.Duration) error {
+	return rc.conn.Expire(ctx, key, expiration).Err()
 }
 
 func (rc *RedisConnection) HashSetIfNotExists(ctx context.Context, key variables.RedisKey, field string, value any, expiration time.Duration) error {

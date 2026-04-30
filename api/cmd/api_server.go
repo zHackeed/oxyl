@@ -13,7 +13,11 @@ import (
 	"github.com/spf13/cobra"
 	"zhacked.me/oxyl/api/internal/controllers/agent"
 	agentAuth "zhacked.me/oxyl/api/internal/controllers/agent/auth"
+	agentNotifications "zhacked.me/oxyl/api/internal/controllers/agent/notifications"
 	"zhacked.me/oxyl/api/internal/controllers/company"
+	"zhacked.me/oxyl/api/internal/controllers/company/endpoints"
+	"zhacked.me/oxyl/api/internal/controllers/company/member"
+	"zhacked.me/oxyl/api/internal/controllers/company/threshold"
 	"zhacked.me/oxyl/api/internal/controllers/user"
 	"zhacked.me/oxyl/api/internal/middlewares"
 	apiModel "zhacked.me/oxyl/api/internal/models"
@@ -63,10 +67,10 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		timescale.Close()
 	}()
 
-	userStorage, companyStorage, agentStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
+	userStorage, companyStorage, agentStorage, notificationStorage, tokenStorage, monitoringStorage := createStorage(timescale, redis)
 
 	userService, companyService, agentService, tokenService, metricsService, err := createServices(userStorage,
-		companyStorage, agentStorage, tokenStorage, monitoringStorage, redis)
+		companyStorage, agentStorage, notificationStorage, tokenStorage, monitoringStorage, redis)
 
 	if err != nil {
 		slog.Error("unable to create service", "error", err)
@@ -134,13 +138,17 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		// -------------- company routes
 		company.NewCreateCompanyController(companyService),
 		company.NewListCompaniesController(companyService),
+		company.NewInfoController(companyService),
 		company.NewDeleteCompanyController(companyService),
-		company.NewSelfPermissionController(companyService),
-		company.NewAddMemberController(companyService),
-		company.NewListMemberController(companyService),
-		company.NewRemoveMemberController(companyService),
-		company.NewThresholdsController(companyService),
-		company.NewModifyThresholdController(companyService),
+		member.NewSelfPermissionController(companyService),
+		member.NewAddMemberController(companyService),
+		member.NewListMemberController(companyService),
+		member.NewRemoveMemberController(companyService),
+		threshold.NewThresholdsController(companyService),
+		threshold.NewModifyThresholdController(companyService),
+		endpoints.NewCreateEntrypointController(companyService),
+		endpoints.NewListEntrypointController(companyService),
+		endpoints.NewDeleteEntrypointController(companyService),
 
 		// -------------- agent routes
 		agent.NewCreateAgentController(agentService),
@@ -149,6 +157,7 @@ func startAPIServer(cmd *cobra.Command, _ []string) {
 		agent.NewDeleteAgentController(agentService),
 		agent.NewToggleMaintenanceController(agentService),
 		agent.NewMetricsController(metricsService),
+		agentNotifications.NewListController(agentService),
 	}
 
 	registerRoutes(apiGroupRoute, protectedRoutes...)
@@ -186,11 +195,12 @@ func createDatabases(ctx context.Context) (*datasource.TimescaleConnection, *dat
 }
 
 func createStorage(timescale *datasource.TimescaleConnection, redis *datasource.RedisConnection) (
-	*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.TokenStorage, *storage.MonitoringStorage,
+	*storage.UserStorage, *storage.CompanyStorage, *storage.AgentStorage, *storage.NotificationStorage, *storage.TokenStorage, *storage.MonitoringStorage,
 ) {
 	return storage.NewUserStorage(timescale),
 		storage.NewCompanyStorage(timescale),
 		storage.NewAgentStorage(timescale),
+		storage.NewNotificationStorage(timescale),
 		storage.NewTokenStorage(redis),
 		storage.NewMonitoringStorage(timescale)
 }
@@ -199,6 +209,7 @@ func createServices(
 	userStorage *storage.UserStorage,
 	companyStorage *storage.CompanyStorage,
 	agentStorage *storage.AgentStorage,
+	notificationStorage *storage.NotificationStorage,
 	tokenStorage *storage.TokenStorage,
 	monitoringStorage *storage.MonitoringStorage,
 	redis *datasource.RedisConnection,
@@ -210,7 +221,7 @@ func createServices(
 
 	userService := service.NewUserService(userStorage)
 	companyService := service.NewCompanyService(redis, companyStorage, userStorage)
-	agentService := service.NewAgentService(redis, companyStorage, agentStorage)
+	agentService := service.NewAgentService(redis, companyStorage, agentStorage, notificationStorage)
 	metricsService := service.NewAgentMetricsService(companyStorage, agentStorage, monitoringStorage)
 
 	return userService, companyService, agentService, tokenService, metricsService, nil

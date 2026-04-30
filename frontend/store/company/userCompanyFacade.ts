@@ -2,12 +2,12 @@ import { useCompanyStore } from './useCompanyStore';
 import { shallow } from 'zustand/shallow';
 
 export const useCompanyFacade = () => {
-  const { activeCompany, permissions, setCompany, setCompanyPermissions } = useCompanyStore(
+  const { activeCompany, permissions, setCompany, setPermissions } = useCompanyStore(
     (state) => ({
-      activeCompany: state.selectedCompany,
-      permissions: state.companyPermission,
+      activeCompany: state.company,
+      permissions: state.permissions,
       setCompany: state.setCompany,
-      setCompanyPermissions: state.setCompanyPermissions,
+      setPermissions: state.setPermissions,
     }),
     shallow
   );
@@ -16,6 +16,6 @@ export const useCompanyFacade = () => {
     activeCompany,
     permissions,
     setCompany,
-    setCompanyPermissions,
+    setPermissions,
   };
 };
