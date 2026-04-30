@@ -55,7 +55,6 @@ const useAuthStore = createWithEqualityFn<AuthStatProps>()((set) => {
       }
     })
     .catch((error) => {
-      console.error('Error initializing auth store', error);
       set((state) => ({
         ...state,
         status: AuthStatus.UNAUTHENTICATED,
